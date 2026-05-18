@@ -197,12 +197,14 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         'nik2'   : col_idx(headers, 'nik2'),
         'kenek'  : col_idx(headers, 'kenek1'),
         'date'   : next((col_idx(headers, dc) for dc in DATE_COLS if col_idx(headers, dc) >= 0), -1),
+        'area'   : col_idx(headers, 'Area'),
     }
 
     monthly     = defaultdict(empty_month)
-    yoy_partial = defaultdict(empty_month)  # untuk YoY apple-to-apple di 2025
-    period_partial     = defaultdict(empty_month)  # .period untuk bulan parsial 2026
-    mom_period_partial = defaultdict(empty_month)  # .mom_period untuk prev bulan 2026
+    yoy_partial = defaultdict(empty_month)
+    period_partial     = defaultdict(empty_month)
+    mom_period_partial = defaultdict(empty_month)
+    area_data   = defaultdict(lambda: defaultdict(empty_month))  # area → month → metrics
     mpp_month   = defaultdict(lambda: defaultdict(float))
     mpp_info    = {}
 
@@ -245,6 +247,16 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['dp']    += to_num(g(ci['dp']))
         monthly[m]['ujp']   += to_num(g(ci['ujp']))
         monthly[m]['ins']   += to_num(g(ci['ins']))
+
+        # Accumulate per-area data (hanya untuk 2026, bukan 2025)
+        if not is_2025 and ci['area'] >= 0:
+            area = str(g(ci['area'])).strip()
+            if area and area not in ('', 'None', '#N/A'):
+                area_data[area][m]['trips'] += 1
+                area_data[area][m]['do_']   += to_num(g(ci['do']))
+                area_data[area][m]['dp']    += to_num(g(ci['dp']))
+                area_data[area][m]['ujp']   += to_num(g(ci['ujp']))
+                area_data[area][m]['ins']   += to_num(g(ci['ins']))
 
         # Accumulate period sub-keys untuk 2026 (apple-to-apple MoM & YoY)
         if not is_2025 and partial_months:
@@ -295,6 +307,10 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                 mpp_info[nik] = {'name': name, 'site': site, 'role': role}
 
     sm[site] = {m: dict(v) for m, v in monthly.items()}
+
+    # Inject area_data sub-key (2026 only)
+    if not is_2025 and area_data:
+        sm[site]['_areas'] = {a: {m: dict(v) for m,v in md.items()} for a,md in area_data.items()}
 
     # Debug: print yoy_partial counts
     if is_2025 and yoy_partial:

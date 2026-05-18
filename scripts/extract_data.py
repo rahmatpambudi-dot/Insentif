@@ -342,7 +342,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         for mo, ins in mpp_month[nik].items():
             mpp_raw[nik]['months'][mo] = mpp_raw[nik]['months'].get(mo, 0) + ins
 
-    print(f'  [OK] {site} — {dict({m: sm[site][m]["trips"] for m in sm[site]})}')
+    print(f'  [OK] {site} — {dict({m: sm[site][m]["trips"] for m in sm[site] if m != "_areas" and isinstance(sm[site][m], dict) and "trips" in sm[site][m]})}')
 
 
 def compute_mpp_categories(sm, mpp_raw):

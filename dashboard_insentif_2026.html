@@ -300,6 +300,32 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
       <div id="sumPills" style="display:none"></div>
       <div id="sumBody" style="display:none"></div>
       <div id="sumCaption" style="display:none"></div>
+
+        <!-- Section Jalur -->
+        <div style="font-size:13px;font-weight:600;color:#1a2e45;margin:16px 0 8px">
+          Tabel Jalur per Site
+          <span style="font-size:11px;font-weight:400;color:#7a94b0;margin-left:8px">berdasarkan kolom Area di sheet</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+          <select id="jalurMetricSel" onchange="renderJalurTable()" style="font-size:12px;padding:4px 8px;border:1px solid #dde3ec;border-radius:6px;color:#1a2e45">
+            <option value="ins">Insentif</option>
+            <option value="ujp">UJP</option>
+            <option value="trips">Trip</option>
+            <option value="do_">DO</option>
+            <option value="dp">DP</option>
+            <option value="do_trip">DO/Trip</option>
+            <option value="dp_trip">DP/Trip</option>
+          </select>
+          <span id="jalurCaption" style="font-size:11px;color:#7a94b0"></span>
+        </div>
+        <div class="tcard" style="padding:0;margin-bottom:13px">
+          <div style="overflow-x:auto">
+            <table class="dtbl" style="width:100%;min-width:600px">
+              <thead id="jalurThead"></thead>
+              <tbody id="jalurBody"></tbody>
+            </table>
+          </div>
+        </div>
     </div>
     <!-- PRODUKTIVITAS -->
     <div id="pg-produktivitas" class="page">
@@ -680,6 +706,7 @@ function nav(pg,btn){
     setTimeout(renderInsight,80);
     setTimeout(()=>{if(typeof buildYoYCharts==='function')buildYoYCharts(getSites());},400);
     setTimeout(()=>{if(typeof renderDemandTable==='function')renderDemandTable();},120);
+  setTimeout(()=>{if(typeof renderJalurTable==='function')renderJalurTable();},150);
   }
   if(pg==='produktivitas')setTimeout(buildProdPeriodCharts,100);
   if(pg==='distribusi')setTimeout(()=>{renderKPIDist();renderDistTable();setTimeout(buildCharts,100);},50);
@@ -1888,6 +1915,7 @@ function renderInsight(){
   buildCards('insightYoYCards','insightYoYConclusion',key=>{const c=v26[key]||0,y=v25[key]||0;return y!==0?(c-y)/Math.abs(y)*100:null;});
   if(typeof renderInsightProd==='function')renderInsightProd();
   if(typeof renderDemandTable==='function')renderDemandTable();
+  if(typeof renderJalurTable==='function')renderJalurTable();
   if(typeof buildYoYCharts==='function')setTimeout(()=>buildYoYCharts(sites),100);
 }
 
@@ -1901,6 +1929,77 @@ setTimeout(()=>{
   if(typeof L!=='undefined'){_initMap();}
   else{setTimeout(_initMap,1000);}
 },500);
+
+function renderJalurTable(){
+  const sites=getSites();
+  const months=getMonths();
+  const metric=document.getElementById('jalurMetricSel')?.value||'ins';
+  const MLBL_J={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',
+    June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
+  const METRIC_LABEL={ins:'Insentif',ujp:'UJP',trips:'Trip',do_:'DO',dp:'DP','do_trip':'DO/Trip','dp_trip':'DP/Trip'};
+  const jalurMap={};
+  sites.forEach(sk=>{
+    const siteData=SITE_MONTHLY[sk];
+    if(!siteData) return;
+    months.forEach(m=>{
+      let areasObj=null;
+      if(siteData[m]&&siteData[m]._areas) areasObj=siteData[m]._areas;
+      else if(siteData._areas) areasObj=siteData._areas;
+      if(!areasObj) return;
+      Object.entries(areasObj).forEach(([area,mdata])=>{
+        const d=mdata[m]||mdata;
+        if(!jalurMap[area]) jalurMap[area]={};
+        if(!jalurMap[area][m]) jalurMap[area][m]={trips:0,do_:0,dp:0,ujp:0,ins:0};
+        jalurMap[area][m].trips+=d.trips||0;
+        jalurMap[area][m].do_+=d.do_||0;
+        jalurMap[area][m].dp+=d.dp||0;
+        jalurMap[area][m].ujp+=d.ujp||0;
+        jalurMap[area][m].ins+=d.ins||0;
+      });
+    });
+  });
+  const jalurList=Object.keys(jalurMap).sort();
+  if(!jalurList.length){
+    document.getElementById('jalurBody').innerHTML='<tr><td colspan="99" style="text-align:center;color:#94a3b8;padding:20px">Data jalur belum tersedia — Run workflow dulu</td></tr>';
+    document.getElementById('jalurThead').innerHTML='';
+    return;
+  }
+  function getVal(d,m){
+    if(!d) return 0;
+    if(metric==='do_trip') return d.do_&&d.trips?+(d.do_/d.trips).toFixed(2):0;
+    if(metric==='dp_trip') return d.dp&&d.trips?+(d.dp/d.trips).toFixed(2):0;
+    return d[metric]||0;
+  }
+  function fmtVal(v){
+    if(metric==='ins'||metric==='ujp') return v?'Rp '+Math.round(v/1000)+'K':'—';
+    if(metric==='do_trip'||metric==='dp_trip') return v?v.toFixed(2):'—';
+    return v?Math.round(v).toLocaleString('id-ID'):'—';
+  }
+  const totals={};
+  jalurList.forEach(j=>{totals[j]=months.reduce((s,m)=>s+getVal(jalurMap[j][m],m),0);});
+  jalurList.sort((a,b)=>totals[b]-totals[a]);
+  const colMaxes={};
+  months.forEach(m=>{const vals=jalurList.map(j=>getVal(jalurMap[j][m],m));colMaxes[m]=Math.max(...vals,1);});
+  const totalMax=Math.max(...jalurList.map(j=>totals[j]),1);
+  function heatColor(v,max){
+    if(!v||!max) return '';
+    const pct=Math.min(v/max,1);
+    const alpha=0.15+0.55*pct;
+    return `background:rgba(2,49,136,${alpha});color:${pct>0.6?'#fff':'#1a2e45'}`;
+  }
+  const mHeaders=months.map(m=>`<th class="r" style="font-size:11px">${MLBL_J[m]||m}</th>`).join('');
+  document.getElementById('jalurThead').innerHTML=`<tr><th style="text-align:left;font-size:11px">JALUR</th>${mHeaders}<th class="r" style="font-size:11px">TOTAL</th></tr>`;
+  document.getElementById('jalurBody').innerHTML=jalurList.map(j=>{
+    const cols=months.map(m=>{
+      const v=getVal(jalurMap[j][m],m);
+      return`<td class="r" style="font-size:11px;${heatColor(v,colMaxes[m])}">${fmtVal(v)}</td>`;
+    }).join('');
+    const tot=totals[j];
+    return`<tr><td style="font-weight:500;font-size:12px">${j}</td>${cols}<td class="r" style="font-weight:700;font-size:12px;${heatColor(tot,totalMax)}">${fmtVal(tot)}</td></tr>`;
+  }).join('');
+  const cap=document.getElementById('jalurCaption');
+  if(cap) cap.textContent=`${jalurList.length} jalur · ${METRIC_LABEL[metric]||metric} · ${sites.length} site`;
+}
 </script>
 <style>
   #connectone-back {

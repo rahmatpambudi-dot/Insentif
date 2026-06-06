@@ -208,33 +208,6 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
 .tat-chip.warn{background:#fef9c3;color:#a16207}
 .tat-chip.over{background:#fee2e2;color:#dc2626}
 .tat-chip.na{background:#f0f5fb;color:#94a3b8}
-
-/* ── MPP vs Jalur High Demand ── */
-.hd-wrap{margin-top:16px}
-.hd-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.hd-title{font-size:13px;font-weight:700;color:#1a2e45}
-.hd-sub{font-size:11px;color:#7a94b0}
-.hd-pct-bar{background:#f0f5fb;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px}
-.hd-pct-label{font-size:11px;color:#5a7090;white-space:nowrap}
-.hd-pct-track{flex:1;height:8px;background:#dce8f5;border-radius:4px;overflow:hidden}
-.hd-pct-fill{height:100%;background:#023188;border-radius:4px;transition:width .4s}
-.hd-pct-val{font-size:13px;font-weight:700;color:#023188;white-space:nowrap}
-.hd-jalur-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.hd-tab{padding:4px 11px;border:1px solid #c2d0e5;border-radius:12px;background:#f0f5fb;font-size:11px;color:#4a5568;cursor:pointer;font-weight:500;transition:all .15s}
-.hd-tab:hover{background:#dce8f5}
-.hd-tab.on{background:#023188;color:#fff;border-color:#023188}
-.hd-rank-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#023188;color:#fff;font-size:9px;font-weight:700;margin-right:5px;flex-shrink:0}
-.hd-table{width:100%;border-collapse:collapse;font-size:12px}
-.hd-table th{color:#7a94b0;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;border-bottom:1px solid #e8f0fb;text-align:left}
-.hd-table th.r{text-align:right}
-.hd-table td{padding:6px 8px;border-bottom:1px solid #f2f6fb;color:#1a2e45}
-.hd-table td.r{text-align:right;font-variant-numeric:tabular-nums}
-.hd-table tr:last-child td{border-bottom:none}
-.hd-table tr:hover td{background:#f8fafd}
-.hd-pct-cell{display:flex;align-items:center;gap:6px;justify-content:flex-end}
-.hd-mini-bar{width:50px;height:5px;background:#e8f0fb;border-radius:3px;overflow:hidden;flex-shrink:0}
-.hd-mini-fill{height:100%;border-radius:3px}
-.no-data-hd{text-align:center;color:#94a3b8;font-size:12px;padding:20px}
 </style>
 </head>
 <body>
@@ -597,22 +570,6 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
                 <thead id="jalurThead"></thead>
                 <tbody id="jalurBody"></tbody>
               </table>
-              <!-- MPP vs High Demand Section -->
-              <div class="hd-wrap" id="hdWrap" style="display:none;margin-top:20px">
-                <div class="hd-header">
-                  <span class="hd-title">&#x1F504; Rotasi MPP &mdash; Jalur High Demand</span>
-                  <span class="hd-sub" id="hdSub"></span>
-                </div>
-                <div class="hd-pct-bar">
-                  <span class="hd-pct-label">% Insentif dari Top 5 Jalur vs Total</span>
-                  <div class="hd-pct-track"><div class="hd-pct-fill" id="hdPctFill" style="width:0%"></div></div>
-                  <span class="hd-pct-val" id="hdPctVal">&mdash;</span>
-                </div>
-                <div class="hd-jalur-tabs" id="hdTabs"></div>
-                <div style="overflow-x:auto">
-                  <table class="hd-table"><thead id="hdThead"></thead><tbody id="hdBody"></tbody></table>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -2353,7 +2310,6 @@ function renderJalurTable(){
   tbody.innerHTML=rows;
 
   if(cap) cap.textContent=jalurList.length+' jalur \u00b7 '+(METRIC_LABEL[metric]||metric)+' \u00b7 '+sites.length+' site \u00b7 '+activeMths.map(m=>MLBL_J[m]||m).join('\u2013');
-  renderMPPJalur();
 }
 
 Chart.register(ChartDataLabels);
@@ -2366,195 +2322,6 @@ setTimeout(()=>{
   if(typeof L!=='undefined'){_initMap();}
   else{setTimeout(_initMap,1000);}
 },500);
-
-// ── MPP vs Jalur High Demand ──────────────────────────────────
-let _hdActiveJalur = null;
-
-function renderMPPJalur(){
-  const hdWrap = document.getElementById('hdWrap');
-  const sites  = getSites();
-  const months = getMonths();
-  const metric = document.getElementById('jalurMetricSel')?.value || 'ins';
-  const MONTH_ORDER=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const M2K={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
-    June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
-
-  // Hanya tampil untuk metric berbasis insentif/trip/DO/DP (bukan ratio)
-  const IS_RATIO = metric==='do_trip'||metric==='dp_trip';
-  if(IS_RATIO){if(hdWrap) hdWrap.style.display='none'; return;}
-
-  // Build jalurMap dari SITE_MONTHLY._areas (sama seperti renderJalurTable)
-  const jalurIns={}, jalurTrips={};
-  sites.forEach(sk=>{
-    const siteData=SITE_MONTHLY[sk];
-    if(!siteData||!siteData._areas) return;
-    Object.entries(siteData._areas).forEach(([area,mdata])=>{
-      if(!jalurIns[area]){jalurIns[area]=0; jalurTrips[area]=0;}
-      months.forEach(m=>{
-        const d=mdata[m]; if(!d) return;
-        jalurIns[area]   += d.ins||0;
-        jalurTrips[area] += d.trips||0;
-      });
-    });
-  });
-
-  // Ambil metric per jalur
-  function jalurVal(area){
-    if(metric==='ins') return jalurIns[area]||0;
-    if(metric==='trips') return jalurTrips[area]||0;
-    if(metric==='do_'){
-      let do_=0; sites.forEach(sk=>{const d=SITE_MONTHLY[sk]?._areas?.[area]; if(!d) return; months.forEach(m=>{do_+=(d[m]?.do_||0);});});
-      return do_;
-    }
-    if(metric==='dp'){
-      let dp=0; sites.forEach(sk=>{const d=SITE_MONTHLY[sk]?._areas?.[area]; if(!d) return; months.forEach(m=>{dp+=(d[m]?.dp||0);});});
-      return dp;
-    }
-    if(metric==='ujp'){
-      let ujp=0; sites.forEach(sk=>{const d=SITE_MONTHLY[sk]?._areas?.[area]; if(!d) return; months.forEach(m=>{ujp+=(d[m]?.ujp||0);});});
-      return ujp;
-    }
-    return jalurIns[area]||0;
-  }
-
-  const allJalur = Object.keys(jalurIns).filter(j=>jalurVal(j)>0);
-  allJalur.sort((a,b)=>jalurVal(b)-jalurVal(a));
-  const top5 = allJalur.slice(0,5);
-  if(!top5.length){if(hdWrap) hdWrap.style.display='none'; return;}
-
-  // % insentif top5 vs total
-  const totalAllIns = allJalur.reduce((s,j)=>s+jalurIns[j],0);
-  const top5Ins     = top5.reduce((s,j)=>s+jalurIns[j],0);
-  const pct         = totalAllIns>0?Math.round(top5Ins/totalAllIns*100):0;
-  const pctFill = document.getElementById('hdPctFill');
-  const pctVal  = document.getElementById('hdPctVal');
-  if(pctFill) pctFill.style.width=pct+'%';
-  if(pctVal)  pctVal.textContent=pct+'% insentif';
-
-  // Sub label
-  const MLBL={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
-  const METRIC_LABEL={ins:'Insentif',ujp:'UJP',trips:'Trip','do_':'DO',dp:'DP'};
-  const hdSub=document.getElementById('hdSub');
-  if(hdSub) hdSub.textContent='Top 5 jalur by '+(METRIC_LABEL[metric]||metric)+' · '+months.map(m=>MLBL[m]||m).join('–');
-
-  // Tab per jalur
-  if(!_hdActiveJalur||!top5.includes(_hdActiveJalur)) _hdActiveJalur=top5[0];
-  const medals=['🥇','🥈','🥉','4','5'];
-  const tabsEl=document.getElementById('hdTabs');
-  if(tabsEl) tabsEl.innerHTML=top5.map((j,i)=>{
-    const active=j===_hdActiveJalur;
-    const medal=i<3?medals[i]:(i+1);
-    return '<button class="hd-tab'+(active?' on':'')+'" onclick="window._hdTabClick(''+j.replace(/'/g,"\'")+'')">'
-      +(i<3?medals[i]:(i+1)+'. ')+j+'</button>';
-  }).join('');
-
-  window._hdTabClick=function(jalur){
-    _hdActiveJalur=jalur;
-    renderMPPJalur();
-  };
-
-  // Build tabel driver yang ke jalur aktif
-  const activeJalur=_hdActiveJalur;
-  const MK2MN={jan:'January',feb:'February',mar:'March',apr:'April',may:'May',
-    jun:'June',jul:'July',agu:'August',sep:'September',okt:'October',nov:'November',des:'December'};
-
-  // Kumpulkan semua driver yang ada di jalur ini
-  const driverRows=[];
-  ALL_MPP.forEach(r=>{
-    if(!sites.includes(r.site)) return;
-    if(!r.areas||!r.areas[activeJalur]) return;
-    const areaData=r.areas[activeJalur];
-
-    // Hitung trips & ins ke jalur ini untuk bulan aktif
-    let tripsToJalur=0, insToJalur=0, totalTrips=0, totalIns=0;
-    months.forEach(m=>{
-      const mk=M2K[m];
-      const ad=areaData[mk];
-      if(ad){
-        tripsToJalur+=ad.trips||0;
-        insToJalur  +=ad.ins||0;
-      }
-      totalTrips+=r[mk]>0?(r[mk+'_tat_acc']>0?Math.round(r[mk+'_tat_acc']/(r[mk+'_tat_avg']||1)):0):0;
-    });
-    // Total trips semua area dari TAT acc / avg (proxy)
-    // Pakai ins bulan aktif sebagai total
-    months.forEach(m=>{
-      const mk=M2K[m];
-      totalIns+=r[mk]||0;
-    });
-
-    if(tripsToJalur<=0) return;
-    // % trips ke jalur vs total trip driver (estimasi dari tat_acc/tat_avg)
-    // Lebih akurat: hitung dari sum trips di semua areas
-    let totalTripAllArea=0;
-    Object.values(r.areas).forEach(amap=>{
-      months.forEach(m=>{
-        const mk=M2K[m];
-        if(amap[mk]) totalTripAllArea+=amap[mk].trips||0;
-      });
-    });
-    const pctTrips=totalTripAllArea>0?Math.round(tripsToJalur/totalTripAllArea*100):0;
-    const pctIns  =totalIns>0?Math.round(insToJalur/totalIns*100):0;
-
-    driverRows.push({
-      name:r.name, site:r.site, role:r.role||'Driver',
-      tripsToJalur, insToJalur, pctTrips, pctIns, totalIns
-    });
-  });
-
-  driverRows.sort((a,b)=>b.tripsToJalur-a.tripsToJalur);
-
-  // Thead
-  const thead=document.getElementById('hdThead');
-  if(thead) thead.innerHTML='<tr>'
-    +'<th>#</th><th>Driver / Kenek</th><th>Role</th><th>Site</th>'
-    +'<th class="r">Trip ke Jalur</th>'
-    +'<th class="r">% Trip ke Jalur</th>'
-    +'<th class="r">Insentif di Jalur</th>'
-    +'<th class="r">% Ins di Jalur</th>'
-    +'</tr>';
-
-  // Tbody
-  const tbody=document.getElementById('hdBody');
-  if(!tbody) return;
-  if(!driverRows.length){
-    tbody.innerHTML='<tr><td colspan="8" class="no-data-hd">Tidak ada driver yang ke jalur '+activeJalur+' pada periode ini</td></tr>';
-    if(hdWrap) hdWrap.style.display='block';
-    return;
-  }
-
-  const maxPctTrips=Math.max(...driverRows.map(d=>d.pctTrips),1);
-  function fmtRp(v){
-    if(v>=1e6) return 'Rp '+(v/1e6).toFixed(1)+' Jt';
-    return 'Rp '+v.toLocaleString('id-ID');
-  }
-
-  tbody.innerHTML=driverRows.map((d,i)=>{
-    const roleBdg=d.role==='Driver'
-      ?'<span class="bdgr" style="font-size:10px">Driver</span>'
-      :'<span class="bdgk" style="font-size:10px">Kenek</span>';
-    const barColor=d.pctTrips>=50?'#023188':d.pctTrips>=30?'#3b82f6':'#93c5fd';
-    const pctBar='<div class="hd-pct-cell">'
-      +'<div class="hd-mini-bar"><div class="hd-mini-fill" style="width:'+Math.min(d.pctTrips,100)+'%;background:'+barColor+'"></div></div>'
-      +'<span style="font-size:11px;font-weight:600;color:'+barColor+'">'+d.pctTrips+'%</span>'
-      +'</div>';
-    const pctInsColor=d.pctIns>=50?'#15803d':d.pctIns>=30?'#16a34a':'#5a7090';
-    return '<tr>'
-      +'<td style="color:#94a3b8;font-size:11px">'+(i+1)+'</td>'
-      +'<td style="font-weight:500">'+d.name+'</td>'
-      +'<td>'+roleBdg+'</td>'
-      +'<td style="font-size:11px">'+d.site+'</td>'
-      +'<td class="r" style="font-weight:600">'+d.tripsToJalur+' trip</td>'
-      +'<td>'+pctBar+'</td>'
-      +'<td class="r">'+fmtRp(d.insToJalur)+'</td>'
-      +'<td class="r" style="font-weight:600;color:'+pctInsColor+'">'+d.pctIns+'%</td>'
-      +'</tr>';
-  }).join('');
-
-  if(hdWrap) hdWrap.style.display='block';
-}
-// ── end renderMPPJalur ─────────────────────────────────────────
-
 </script>
 <style>
   #connectone-back {

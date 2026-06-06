@@ -940,7 +940,7 @@ function renderDistTable(){
       if(ins<=0) return;
       const cat=ins>1500000?'High':ins>=500000?'Mid':'Low';
       if(DIST_CAT!=='all'&&cat!==DIST_CAT) return;
-      rows.push({nik:r.nik,name:r.name,site:r.site,role:r.role||'Driver',month:m,ins,cat,total:r.total});
+      rows.push({nik:r.nik,name:r.name,site:r.site,role:r.role||'Driver',month:m,ins,cat,total:r.total,tat_avg:r[mk+'_tat_avg']||0,dp_ins:r[mk+'_dp_ins']||0});
     });
   });
   rows.sort((a,b)=>{
@@ -984,8 +984,7 @@ function renderDistTable(){
     const nameCell=isTop20?`<span style="font-weight:600">${r.name}</span> <span style="font-size:9px;padding:1px 5px;background:#023188;color:#fff;border-radius:8px">TOP20</span>`:r.name;
     const roleBadge=r.role==='Kenek'?'<span class="bdgk">Kenek</span>':'<span class="bdgr">Driver</span>';
     // TAT avg
-    const tatKey=M2K[r.month]+'_tat_avg';
-    const tatVal=r[tatKey]||null;
+    const tatVal=r.tat_avg||null;
     let tatCell='<span class="tat-chip na">—</span>';
     if(tatVal&&tatVal>0){
       const h=Math.floor(tatVal/60),m=Math.round(tatVal%60);
@@ -994,8 +993,7 @@ function renderDistTable(){
       tatCell=`<span class="tat-chip ${cls}">${str}</span>`;
     }
     // DP Insentif
-    const dpInsKey=M2K[r.month]+'_dp_ins';
-    const dpIns=r[dpInsKey]||0;
+    const dpIns=r.dp_ins||0;
     const dpInsCell=dpIns?dpIns.toLocaleString('id-ID')+' titik':'—';
     return`<tr><td style="color:#94a3b8;font-size:11px">${st+i+1}</td><td style="font-weight:500">${nameCell}</td><td>${roleBadge}</td><td>${siteBadge}</td><td style="font-size:11px;color:#5a7090">${MNAME_FULL[r.month]||r.month}</td><td>${catBadge}</td><td class="r" style="font-weight:600">Rp ${r.ins.toLocaleString('id-ID')}</td><td class="r" style="color:#023188;font-weight:600">${ytd?'Rp '+Math.round(ytd/1e6)+' Jt':'—'}</td><td class="r">${tatCell}</td><td class="r" style="color:#5a7090">${dpInsCell}</td></tr>`;
   }).join('');

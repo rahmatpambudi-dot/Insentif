@@ -195,6 +195,19 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
 .pill{padding:4px 12px;border:1px solid #c2d0e5;border-radius:14px;background:#fff;font-size:11.5px;color:#4a5568;cursor:pointer;transition:all .15s;font-weight:400}
 .pill:hover{background:#e8eff8}
 .pill.active{background:#023188;color:#fff;border-color:#023188;font-weight:500}
+
+/* ── Stat badges (Distribusi MPP) ── */
+.stat-badges{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:13px}
+.sb-card{background:#f0f5fb;border-radius:10px;padding:10px 12px}
+.sb-lbl{font-size:10px;color:#7a94b0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.sb-val{font-size:17px;font-weight:700;color:#1a2e45;line-height:1.2}
+.sb-sub{font-size:10px;color:#94a3b8;margin-top:2px}
+/* TAT chip */
+.tat-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 7px;border-radius:12px;font-weight:600;white-space:nowrap}
+.tat-chip.ok{background:#dcfce7;color:#15803d}
+.tat-chip.warn{background:#fef9c3;color:#a16207}
+.tat-chip.over{background:#fee2e2;color:#dc2626}
+.tat-chip.na{background:#f0f5fb;color:#94a3b8}
 </style>
 </head>
 <body>
@@ -390,6 +403,7 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
       <div class="tcard">
         <div class="tc-title">Daftar Driver MPP</div>
         <div class="tc-sub" id="distFltLbl">Filter aktif: Semua</div>
+        <div id="statBadges" class="stat-badges" style="margin-bottom:10px"></div>
         <div id="highRepeatNotif" style="display:none;margin-bottom:8px;padding:8px 12px;background:#fef9c3;border:1px solid #f59c1a;border-radius:8px;font-size:11.5px;color:#92400e">
         ⭐ <strong>Driver High berulang (MoM):</strong> <span id="highRepeatList"></span>
       </div>
@@ -401,7 +415,7 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
           
         </div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th style="width:40px">#</th><th>Nama</th><th>Role</th><th>Site</th><th>Bulan</th><th>Kategori</th><th class="r">Insentif MPP</th><th class="r">Total YTD</th></tr></thead>
+          <thead><tr><th style="width:40px">#</th><th>Nama</th><th>Role</th><th>Site</th><th>Bulan</th><th>Kategori</th><th class="r">Insentif MPP</th><th class="r">Total YTD</th><th class="r" title="Rata-rata durasi bongkar per trip. ≤8j=hijau, 8–10j=kuning, >10j=merah. TAT minus &amp; >12j di-exclude.">TAT Avg ⓘ</th><th class="r">DP Insentif</th></tr></thead>
           <tbody id="distBody"></tbody>
         </table></div>
         <div class="pager"><div id="distPI"></div><div class="pbtns" id="distPB"></div></div>
@@ -870,7 +884,41 @@ function renderTopMPP(){
   }).join('');
 }
 
+function renderStatBadges(){
+  const months=getMonths();
+  const sites=getSites();
+  const M2K={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
+    June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+  // kumpulkan semua nilai insentif driver sesuai filter aktif
+  const vals=[];
+  ALL_MPP.forEach(r=>{
+    if(!sites.includes(r.site))return;
+    months.forEach(m=>{
+      const mk=M2K[m]||m.slice(0,3).toLowerCase();
+      const ins=r[mk]||0;
+      if(ins<=0)return;
+      const cat=ins>1500000?'High':ins>=500000?'Mid':'Low';
+      if(DIST_CAT!=='all'&&cat!==DIST_CAT)return;
+      vals.push(ins);
+    });
+  });
+  const el=document.getElementById('statBadges');
+  if(!el)return;
+  if(!vals.length){el.innerHTML='';return;}
+  const maxV=Math.max(...vals),minV=Math.min(...vals);
+  const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
+  const std=Math.sqrt(vals.reduce((a,v)=>a+(v-mean)**2,0)/vals.length);
+  const fmtRp=v=>'Rp '+Math.round(v).toLocaleString('id-ID');
+  const cards=[
+    {icon:'↑',lbl:'Max Insentif',val:fmtRp(maxV),accent:'#15803d'},
+    {icon:'↓',lbl:'Min Insentif',val:fmtRp(minV),accent:'#dc2626'},
+    {icon:'≈',lbl:'Mean Insentif',val:fmtRp(mean),accent:'#023188'},
+    {icon:'σ',lbl:'Std Deviasi',val:fmtRp(std),accent:'#a16207'},
+  ];
+  el.innerHTML=cards.map(c=>`<div class="sb-card"><div class="sb-lbl"><span style="color:${c.accent};font-weight:700;font-size:13px">${c.icon}</span>${c.lbl}</div><div class="sb-val">${c.val}</div><div class="sb-sub">${vals.length} entri · filter aktif</div></div>`).join('');
+}
 function renderDistTable(){
+  renderStatBadges();
   const months=getMonths();
   const sites=getSites();
   const MNAME_SHORT={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',
@@ -935,7 +983,21 @@ function renderDistTable(){
     const isTop20=!!topEntry;
     const nameCell=isTop20?`<span style="font-weight:600">${r.name}</span> <span style="font-size:9px;padding:1px 5px;background:#023188;color:#fff;border-radius:8px">TOP20</span>`:r.name;
     const roleBadge=r.role==='Kenek'?'<span class="bdgk">Kenek</span>':'<span class="bdgr">Driver</span>';
-    return`<tr><td style="color:#94a3b8;font-size:11px">${st+i+1}</td><td style="font-weight:500">${nameCell}</td><td>${roleBadge}</td><td>${siteBadge}</td><td style="font-size:11px;color:#5a7090">${MNAME_FULL[r.month]||r.month}</td><td>${catBadge}</td><td class="r" style="font-weight:600">Rp ${r.ins.toLocaleString('id-ID')}</td><td class="r" style="color:#023188;font-weight:600">${ytd?'Rp '+Math.round(ytd/1e6)+' Jt':'—'}</td></tr>`;
+    // TAT avg
+    const tatKey=M2K[r.month]+'_tat_avg';
+    const tatVal=r[tatKey]||null;
+    let tatCell='<span class="tat-chip na">—</span>';
+    if(tatVal&&tatVal>0){
+      const h=Math.floor(tatVal/60),m=Math.round(tatVal%60);
+      const str=h>0?`${h}j ${m}m`:`${m}m`;
+      const cls=tatVal>600?'over':tatVal>480?'warn':'ok';
+      tatCell=`<span class="tat-chip ${cls}">${str}</span>`;
+    }
+    // DP Insentif
+    const dpInsKey=M2K[r.month]+'_dp_ins';
+    const dpIns=r[dpInsKey]||0;
+    const dpInsCell=dpIns?'Rp '+dpIns.toLocaleString('id-ID'):'—';
+    return`<tr><td style="color:#94a3b8;font-size:11px">${st+i+1}</td><td style="font-weight:500">${nameCell}</td><td>${roleBadge}</td><td>${siteBadge}</td><td style="font-size:11px;color:#5a7090">${MNAME_FULL[r.month]||r.month}</td><td>${catBadge}</td><td class="r" style="font-weight:600">Rp ${r.ins.toLocaleString('id-ID')}</td><td class="r" style="color:#023188;font-weight:600">${ytd?'Rp '+Math.round(ytd/1e6)+' Jt':'—'}</td><td class="r">${tatCell}</td><td class="r" style="color:#5a7090">${dpInsCell}</td></tr>`;
   }).join('');
   document.getElementById('distPI').textContent=`${st+1}–${en} dari ${total} MPP`;
   const pp=[];for(let p=Math.max(1,DIST_PAGE-2);p<=Math.min(tp,DIST_PAGE+2);p++)pp.push(p);

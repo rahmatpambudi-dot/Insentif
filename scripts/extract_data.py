@@ -248,6 +248,8 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
     area_data   = defaultdict(lambda: defaultdict(empty_month))
     mpp_month   = defaultdict(lambda: defaultdict(float))
     mpp_info    = {}
+    # {nik: {month: {area: {'trips': N, 'ins': X}}}}
+    mpp_area    = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: {'trips':0,'ins':0.0})))
 
     # TAT: {nik: {month: [list of valid menit]}}
     tat_data    = defaultdict(lambda: defaultdict(list))
@@ -347,6 +349,11 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
             if 'DUMMY' in name.upper(): continue
 
             mpp_month[nik][m] += ins_mpp
+            # Area breakdown per driver
+            area_val = str(g(ci['area'])).strip() if ci.get('area',-1)>=0 else ''
+            if area_val and area_val not in ('','None','#N/A'):
+                mpp_area[nik][m][area_val]['trips'] += 1
+                mpp_area[nik][m][area_val]['ins']   += ins_mpp
             if nik not in mpp_info:
                 mpp_info[nik] = {'name': name, 'site': site, 'role': role}
 
@@ -399,11 +406,21 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         # Merge TAT dan DP_Insentif — setdefault utk handle NIK yg sudah ada dari site lain
         mpp_raw[nik].setdefault('tat', {})
         mpp_raw[nik].setdefault('dp_ins', {})
+        mpp_raw[nik].setdefault('areas', {})
         for mo, mins in tat_data[nik].items():
             existing = mpp_raw[nik]['tat'].get(mo, [])
             mpp_raw[nik]['tat'][mo] = existing + mins
         for mo, total in dp_ins_data[nik].items():
             mpp_raw[nik]['dp_ins'][mo] = mpp_raw[nik]['dp_ins'].get(mo, 0) + total
+        # Merge area breakdown
+        for mo, amap in mpp_area[nik].items():
+            if mo not in mpp_raw[nik]['areas']:
+                mpp_raw[nik]['areas'][mo] = {}
+            for area, av in amap.items():
+                if area not in mpp_raw[nik]['areas'][mo]:
+                    mpp_raw[nik]['areas'][mo][area] = {'trips':0,'ins':0.0}
+                mpp_raw[nik]['areas'][mo][area]['trips'] += av['trips']
+                mpp_raw[nik]['areas'][mo][area]['ins']   += av['ins']
 
     print(f'  [OK] {site} — {dict({m: sm[site][m]["trips"] for m in sm[site] if m != "_areas" and isinstance(sm[site][m], dict) and "trips" in sm[site][m]})}')
 
@@ -450,6 +467,16 @@ def build_mpp_tables(mpp_raw, months):
 
             # DP Insentif total per bulan
             row[mk + '_dp_ins'] = d.get('dp_ins', {}).get(m, 0)
+
+        # Area breakdown — {area: {month_key: {trips, ins}}}
+        # Reformat: areas_flat[area][mk] = {trips, ins}
+        areas_flat = {}
+        for mo, amap in d.get('areas', {}).items():
+            mk2 = mo[:3].lower()
+            for area, av in amap.items():
+                if area not in areas_flat: areas_flat[area] = {}
+                areas_flat[area][mk2] = av
+        row['areas'] = areas_flat
 
         all_mpp.append(row)
 

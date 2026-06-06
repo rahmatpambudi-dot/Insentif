@@ -439,12 +439,14 @@ def build_mpp_tables(mpp_raw, months):
             mk = m[:3].lower()
             row[mk] = d['months'].get(m, 0)
 
-            # TAT avg: hitung rata-rata dari list menit valid
+            # TAT avg & akumulasi dari list menit valid
             tat_list = d.get('tat', {}).get(m, [])
             if tat_list:
                 row[mk + '_tat_avg'] = round(sum(tat_list) / len(tat_list), 1)
+                row[mk + '_tat_acc'] = round(sum(tat_list), 0)  # total menit akumulasi
             else:
                 row[mk + '_tat_avg'] = 0
+                row[mk + '_tat_acc'] = 0
 
             # DP Insentif total per bulan
             row[mk + '_dp_ins'] = d.get('dp_ins', {}).get(m, 0)

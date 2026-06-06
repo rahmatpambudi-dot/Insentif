@@ -177,17 +177,18 @@ def to_num(v):
 
 def parse_tat_string(v):
     """
-    Parse TAT dari format string 'HH:MM' atau angka menit.
+    Parse TAT dari format string 'H:MM:SS', 'HH:MM', atau angka menit.
     Return menit sebagai float, atau None kalau tidak valid.
-    TAT <= 0 atau > 720 menit (12 jam) dianggap outlier → return None.
+    Filter: TAT <= 0, h < 0 (negatif), atau > 720 menit (12 jam) → return None.
     """
     if v in (None, '', 'None', 'N/A', '#N/A'): return None
     s = str(v).strip()
-    # Format HH:MM
     if ':' in s:
         parts = s.split(':')
         try:
-            h, m = int(parts[0]), int(parts[1])
+            h = int(parts[0])
+            m = int(parts[1])
+            if h < 0: return None  # exclude TAT negatif
             total = h * 60 + m
             if total <= 0 or total > 720: return None
             return float(total)

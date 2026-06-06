@@ -1080,9 +1080,9 @@ function buildCharts(){
   const catMidD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_mid||0});return v;});
   const catLowD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_low||0});return v;});
   mc('catChart',{type:'bar',data:{labels:MLBL,datasets:[
-    {label:'High',data:catHighD,backgroundColor:'#22c55e99',borderRadius:2},
+    {label:'High',data:catHighD,backgroundColor:'#ef444499',borderRadius:2},
     {label:'Mid',data:catMidD,backgroundColor:'#f59c1a99'},
-    {label:'Low',data:catLowD,backgroundColor:'#ef444499',
+    {label:'Low',data:catLowD,backgroundColor:'#22c55e99',
       datalabels:{display:true,anchor:'end',align:'top',offset:2,color:'#1a2e45',
         font:{size:10,weight:'700'},
         formatter:(v,ctx)=>{
@@ -1382,13 +1382,13 @@ function _popup(sk){
         <span style="font-weight:600;color:#1a2e45">${v}${typeof p==='number'&&p>0&&typeof raw==='number'?yoyBadge(raw,p,h):''}</span>
       </div>`).join('')}
       <div style="display:flex;gap:5px;margin-top:8px">
-        <div style="flex:1;text-align:center;background:#fee2e2;color:#dc2626;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#dcfce7;color:#15803d;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mh}</div><div style="font-size:9px">High</div>
         </div>
         <div style="flex:1;text-align:center;background:#fef9c3;color:#a16207;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mm}</div><div style="font-size:9px">Mid</div>
         </div>
-        <div style="flex:1;text-align:center;background:#dcfce7;color:#15803d;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#fee2e2;color:#dc2626;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.ml}</div><div style="font-size:9px">Low</div>
         </div>
       </div>

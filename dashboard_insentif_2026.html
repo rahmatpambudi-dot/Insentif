@@ -2026,7 +2026,8 @@ function renderJalurTable(){
   if(!tbody) return;
 
   // Only months that are in filter AND have at least some data
-  const activeMths=MONTH_ORDER.filter(m=>months.includes(m)&&Object.values(jalurMap).some(jm=>jm[m]&&(jm[m].ins||jm[m].trips)));
+  // Ranking Jalur selalu tampil semua bulan yang ada di data (ignore filter bulan)
+  const activeMths=MONTH_ORDER.filter(m=>MONTHS.includes(m)&&Object.values(jalurMap).some(jm=>jm[m]&&(jm[m].ins||jm[m].trips)));
   const jalurList=Object.keys(jalurMap).filter(j=>activeMths.some(m=>jalurMap[j][m]));
   if(!jalurList.length){
     tbody.innerHTML='<tr><td colspan="99" style="text-align:center;color:#94a3b8;padding:24px;font-size:12px">Data jalur belum tersedia</td></tr>';

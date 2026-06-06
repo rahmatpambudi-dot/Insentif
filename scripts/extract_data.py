@@ -7,6 +7,12 @@ Dijalankan oleh GitHub Actions. Butuh env vars:
   GDRIVE_CREDENTIALS : JSON service account key (dari GitHub Secrets)
   SHEET_ID_2026      : ID spreadsheet 2026
   SHEET_ID_2025      : ID spreadsheet 2025
+
+Changelog:
+  - Tambah ekstraksi TAT (Lama_Bongkar_(Menit)) per driver per bulan
+    → field: {mon}_tat_avg di ALL_MPP (rata-rata menit, TAT <= 0 & > 720 di-exclude)
+  - Tambah ekstraksi DP_Insentif per driver per bulan
+    → field: {mon}_dp_ins di ALL_MPP (total per driver per bulan)
 """
 
 import os, json, re, time
@@ -25,7 +31,6 @@ SITES_26 = [
 ]
 SITES_25 = ['JBBK','CKP','SDA']
 
-# Tab names di sheet 2025 pakai HURUF KAPITAL — mapping site name → tab name 2025
 SITES_25_TAB_MAP = {
     'JBBK'          : 'JBBK',
     'CKP'           : 'CKP',
@@ -41,7 +46,6 @@ SITES_25_TAB_MAP = {
     'Hub Kediri'    : 'HUB KEDIRI',
 }
 
-# 2025: extract semua bulan yang tersedia termasuk Q4
 MONTHS_2025 = [
     'January','February','March','April','May','June',
     'July','August','September','October','November','December'
@@ -59,25 +63,30 @@ SCOPES = [
 
 HTML_PATH = 'dashboard_insentif_2026.html'
 
-# ── Auto-detect months dari sheet ────────────────────────────────────────────
+# Nama kolom TAT di sheet (coba semua kandidat)
+TAT_COL_CANDIDATES = [
+    'Lama_Bongkar_(Menit)', 'Lama_Bongkar_(menit)', 'lama_bongkar_(menit)',
+    'Lama Bongkar (Menit)', 'TAT', 'tat', 'Durasi_Bongkar', 'durasi_bongkar',
+    'Lama_Bongkar', 'lama_bongkar',
+]
+
+# Nama kolom DP_Insentif di sheet
+DP_INS_COL_CANDIDATES = [
+    'DP_Insentif', 'dp_insentif', 'DP Insentif', 'dp insentif',
+    'Dp_Insentif', 'DP_INSENTIF',
+]
+
+
+# ── Auto-detect months ────────────────────────────────────────────────────────
 
 def detect_months_and_partial(wb, sites):
-    """
-    Baca semua nilai kolom 'Month Rev' dari semua sheet,
-    lalu tentukan:
-      - MONTHS: semua bulan yang ada (sorted by MONTH_ORDER)
-      - PARTIAL_MONTHS: bulan terakhir + cutoff day (hari max yang ada di data)
-    """
     wib = timezone(timedelta(hours=7))
     today = datetime.now(wib)
-    current_month = today.strftime('%B')   # e.g. 'May'
+    current_month = today.strftime('%B')
     current_day   = today.day
 
     month_set = set()
-    # Untuk partial: cari max tanggal di bulan terakhir
-    # Kolom tanggal bisa 'Tanggal', 'Date', 'date', 'tgl' — coba semua
     date_col_candidates = ['Tanggal','tanggal','Date','date','Tgl','tgl','Transaction Date']
-
     month_maxday = defaultdict(int)
 
     for site in sites:
@@ -100,7 +109,6 @@ def detect_months_and_partial(wb, sites):
                 m = row[ci_month].strip() if ci_month >= 0 and ci_month < len(row) else ''
                 if m in MONTH_ORDER:
                     month_set.add(m)
-                    # Coba extract hari dari kolom tanggal
                     if ci_date >= 0 and ci_date < len(row):
                         raw = str(row[ci_date]).strip()
                         for fmt in ('%m/%d/%Y','%d/%m/%Y','%Y-%m-%d','%d-%m-%Y'):
@@ -114,19 +122,16 @@ def detect_months_and_partial(wb, sites):
             continue
 
     if not month_set:
-        # Fallback: pakai bulan saat ini
         month_set = {current_month}
 
     months = sorted(month_set, key=lambda m: MONTH_ORDER.index(m))
 
-    # Tentukan partial months:
     partial_months = {}
     last_month = months[-1]
     if last_month == current_month:
         cutoff = month_maxday.get(last_month, current_day)
         partial_months[last_month] = cutoff
 
-    # Tanggal data terakhir dari max tanggal di bulan terakhir
     last_month_idx = MONTH_ORDER.index(last_month) + 1
     last_day = month_maxday.get(last_month, 1)
     MONTH_ID = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
@@ -155,12 +160,44 @@ def col_idx(headers, name):
             return i
     return -1
 
+def col_idx_multi(headers, candidates):
+    """Coba beberapa nama kolom kandidat, return index pertama yang ketemu."""
+    for name in candidates:
+        idx = col_idx(headers, name)
+        if idx >= 0:
+            return idx
+    return -1
+
 def to_num(v):
     if v in (None, '', 'None'): return 0.0
     try:
         return float(str(v).replace(',','').replace(' ',''))
     except:
         return 0.0
+
+def parse_tat_string(v):
+    """
+    Parse TAT dari format string 'HH:MM' atau angka menit.
+    Return menit sebagai float, atau None kalau tidak valid.
+    TAT <= 0 atau > 720 menit (12 jam) dianggap outlier → return None.
+    """
+    if v in (None, '', 'None', 'N/A', '#N/A'): return None
+    s = str(v).strip()
+    # Format HH:MM
+    if ':' in s:
+        parts = s.split(':')
+        try:
+            h, m = int(parts[0]), int(parts[1])
+            total = h * 60 + m
+            if total <= 0 or total > 720: return None
+            return float(total)
+        except: return None
+    # Format angka menit langsung
+    try:
+        val = float(s.replace(',',''))
+        if val <= 0 or val > 720: return None
+        return val
+    except: return None
 
 def empty_month():
     return {'trips':0,'do_':0,'dp':0,'ujp':0,'ins':0,
@@ -170,11 +207,6 @@ def empty_month():
 # ── Extraction ───────────────────────────────────────────────────────────────
 
 def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=False):
-    """
-    Extract sheet data.
-    Kalau is_2025=True dan partial_months ada, generate sub-key .yoy_period
-    berisi data dengan cutoff hari yang sama (untuk YoY apple-to-apple).
-    """
     DATE_FMTS = ['%m/%d/%Y','%d/%m/%Y','%Y-%m-%d','%d-%m-%Y']
     DATE_COLS  = ['Tanggal','tanggal','Date','date','Tgl','tgl','Transaction Date']
 
@@ -198,15 +230,28 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         'kenek'  : col_idx(headers, 'kenek1'),
         'date'   : next((col_idx(headers, dc) for dc in DATE_COLS if col_idx(headers, dc) >= 0), -1),
         'area'   : col_idx(headers, 'Area'),
+        # Kolom baru
+        'tat'    : col_idx_multi(headers, TAT_COL_CANDIDATES),
+        'dp_ins' : col_idx_multi(headers, DP_INS_COL_CANDIDATES),
     }
+
+    # Log kolom baru
+    tat_col_name  = headers[ci['tat']]  if ci['tat']  >= 0 else 'NOT FOUND'
+    dp_ins_col_name = headers[ci['dp_ins']] if ci['dp_ins'] >= 0 else 'NOT FOUND'
+    print(f'  [COL] {site} — TAT: "{tat_col_name}" | DP_Insentif: "{dp_ins_col_name}"')
 
     monthly     = defaultdict(empty_month)
     yoy_partial = defaultdict(empty_month)
     period_partial     = defaultdict(empty_month)
     mom_period_partial = defaultdict(empty_month)
-    area_data   = defaultdict(lambda: defaultdict(empty_month))  # area → month → metrics
+    area_data   = defaultdict(lambda: defaultdict(empty_month))
     mpp_month   = defaultdict(lambda: defaultdict(float))
     mpp_info    = {}
+
+    # TAT: {nik: {month: [list of valid menit]}}
+    tat_data    = defaultdict(lambda: defaultdict(list))
+    # DP_Insentif: {nik: {month: total}}
+    dp_ins_data = defaultdict(lambda: defaultdict(float))
 
     for row in all_rows[1:]:
         def g(c): return row[c] if 0 <= c < len(row) else ''
@@ -222,7 +267,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
 
         if lc_empty and not has_driver: continue
 
-        # Parse tanggal untuk yoy_period filter
+        # Parse tanggal
         row_day = None
         if ci['date'] >= 0:
             raw_date = str(g(ci['date'])).strip()
@@ -231,11 +276,10 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                     row_day = datetime.strptime(raw_date, fmt).day
                     break
                 except: pass
-            # Fallback: Excel serial number (e.g. 45823)
             if row_day is None:
                 try:
                     serial = int(float(raw_date))
-                    if serial > 40000:  # sanity check: valid Excel date range
+                    if serial > 40000:
                         from datetime import date as _date
                         excel_epoch = _date(1899, 12, 30)
                         d = _date.fromordinal(excel_epoch.toordinal() + serial)
@@ -248,7 +292,6 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['ujp']   += to_num(g(ci['ujp']))
         monthly[m]['ins']   += to_num(g(ci['ins']))
 
-        # Accumulate per-area data (hanya untuk 2026, bukan 2025)
         if not is_2025 and ci['area'] >= 0:
             area = str(g(ci['area'])).strip()
             if area and area not in ('', 'None', '#N/A'):
@@ -258,9 +301,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                 area_data[area][m]['ujp']   += to_num(g(ci['ujp']))
                 area_data[area][m]['ins']   += to_num(g(ci['ins']))
 
-        # Accumulate period sub-keys untuk 2026 (apple-to-apple MoM & YoY)
         if not is_2025 and partial_months:
-            # .period — bulan parsial itu sendiri (Mei 1-12)
             if m in partial_months:
                 cutoff = partial_months[m]
                 if row_day is not None and row_day <= cutoff:
@@ -269,9 +310,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                     period_partial[m]['dp']    += to_num(g(ci['dp']))
                     period_partial[m]['ujp']   += to_num(g(ci['ujp']))
                     period_partial[m]['ins']   += to_num(g(ci['ins']))
-            # .mom_period — bulan sebelum parsial (April 1-12)
-            MONTH_ORDER_LOCAL = ['January','February','March','April','May','June',
-                'July','August','September','October','November','December']
+            MONTH_ORDER_LOCAL = MONTH_ORDER[:]
             for partial_m, cutoff in partial_months.items():
                 idx = MONTH_ORDER_LOCAL.index(partial_m) if partial_m in MONTH_ORDER_LOCAL else -1
                 if idx > 0:
@@ -283,7 +322,6 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                         mom_period_partial[m]['ujp']   += to_num(g(ci['ujp']))
                         mom_period_partial[m]['ins']   += to_num(g(ci['ins']))
 
-        # Accumulate yoy_period — filter by cutoff day (sama dengan 2026 partial)
         if is_2025 and partial_months and m in partial_months:
             cutoff = partial_months[m]
             if row_day is not None and row_day <= cutoff:
@@ -297,38 +335,46 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         ins_mpp = to_num(g(ci['insmpp']))
         if ins_mpp <= 0: continue
 
+        # Collect TAT dan DP_Insentif per NIK
+        tat_val = parse_tat_string(g(ci['tat'])) if ci['tat'] >= 0 else None
+        dp_ins_val = to_num(g(ci['dp_ins'])) if ci['dp_ins'] >= 0 else 0.0
+
         for nik_ci, name_ci, role in [(ci['nik1'], ci['driver'], 'Driver'), (ci['nik2'], ci['kenek'], 'Kenek')]:
             nik  = str(g(nik_ci)).strip()
             name = str(g(name_ci)).strip()
             if not nik or nik in ('None','999999',''): continue
             if 'DUMMY' in name.upper(): continue
+
             mpp_month[nik][m] += ins_mpp
             if nik not in mpp_info:
                 mpp_info[nik] = {'name': name, 'site': site, 'role': role}
 
+            # TAT: simpan list menit per driver per bulan (2026 only)
+            if not is_2025 and tat_val is not None:
+                tat_data[nik][m].append(tat_val)
+
+            # DP_Insentif: akumulasi per driver per bulan (2026 only)
+            if not is_2025 and dp_ins_val > 0:
+                dp_ins_data[nik][m] += dp_ins_val
+
     sm[site] = {m: dict(v) for m, v in monthly.items()}
 
-    # Inject area_data sub-key (2026 only)
     if not is_2025 and area_data:
         sm[site]['_areas'] = {a: {m: dict(v) for m,v in md.items()} for a,md in area_data.items()}
 
-    # Debug: print yoy_partial counts
     if is_2025 and yoy_partial:
         print(f'    [yoy_period] {site}: {dict({m: yoy_partial[m]["trips"] for m in yoy_partial})}')
     elif is_2025 and partial_months:
-        # Sample first few date values for debug
         sample_dates = []
         for row in all_rows[1:6]:
             if ci['date'] >= 0 and ci['date'] < len(row):
                 sample_dates.append(str(row[ci['date']]))
         print(f'    [yoy_period] {site}: EMPTY — date_col={ci["date"]}, sample_dates={sample_dates}')
 
-    # Inject yoy_period sub-key ke sm[site][month] (2025)
     for m, d in yoy_partial.items():
         if m in sm[site]:
             sm[site][m]['yoy_period'] = dict(d)
 
-    # Inject period + mom_period sub-key ke sm[site][month] (2026)
     for m, d in period_partial.items():
         if m in sm[site]:
             sm[site][m]['period'] = dict(d)
@@ -338,9 +384,23 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
 
     for nik, info in mpp_info.items():
         if nik not in mpp_raw:
-            mpp_raw[nik] = {'name': info['name'], 'site': site, 'role': info.get('role','Driver'), 'months': {}}
+            mpp_raw[nik] = {
+                'name'   : info['name'],
+                'site'   : site,
+                'role'   : info.get('role','Driver'),
+                'months' : {},
+                'tat'    : {},   # {month: [list of menit]}
+                'dp_ins' : {},   # {month: total}
+            }
         for mo, ins in mpp_month[nik].items():
             mpp_raw[nik]['months'][mo] = mpp_raw[nik]['months'].get(mo, 0) + ins
+
+        # Merge TAT dan DP_Insentif
+        for mo, mins in tat_data[nik].items():
+            existing = mpp_raw[nik]['tat'].get(mo, [])
+            mpp_raw[nik]['tat'][mo] = existing + mins
+        for mo, total in dp_ins_data[nik].items():
+            mpp_raw[nik]['dp_ins'][mo] = mpp_raw[nik]['dp_ins'].get(mo, 0) + total
 
     print(f'  [OK] {site} — {dict({m: sm[site][m]["trips"] for m in sm[site] if m != "_areas" and isinstance(sm[site][m], dict) and "trips" in sm[site][m]})}')
 
@@ -356,14 +416,38 @@ def compute_mpp_categories(sm, mpp_raw):
 
 
 def build_mpp_tables(mpp_raw, months):
+    """
+    Build ALL_MPP rows.
+    Tambah field per bulan:
+      {mon}_tat_avg  → rata-rata menit TAT valid (atau 0 kalau tidak ada data)
+      {mon}_dp_ins   → total DP_Insentif bulan tersebut
+    """
     all_mpp = []
     for nik, d in mpp_raw.items():
         total = sum(d['months'].values())
-        row = {'nik': nik, 'name': d['name'], 'site': d['site'],
-               'role': d.get('role','Driver'), 'total': total}
+        row = {
+            'nik'  : nik,
+            'name' : d['name'],
+            'site' : d['site'],
+            'role' : d.get('role','Driver'),
+            'total': total,
+        }
         for m in months:
-            row[m[:3].lower()] = d['months'].get(m, 0)
+            mk = m[:3].lower()
+            row[mk] = d['months'].get(m, 0)
+
+            # TAT avg: hitung rata-rata dari list menit valid
+            tat_list = d.get('tat', {}).get(m, [])
+            if tat_list:
+                row[mk + '_tat_avg'] = round(sum(tat_list) / len(tat_list), 1)
+            else:
+                row[mk + '_tat_avg'] = 0
+
+            # DP Insentif total per bulan
+            row[mk + '_dp_ins'] = d.get('dp_ins', {}).get(m, 0)
+
         all_mpp.append(row)
+
     all_mpp.sort(key=lambda x: -x['total'])
     top20 = all_mpp[:20]
     return all_mpp, top20
@@ -428,10 +512,8 @@ def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, las
     with open(HTML_PATH, 'r', encoding='utf-8') as f:
         html = f.read()
 
-    # Update chip tanggal pakai tanggal data terakhir (bukan tanggal run)
     html = re.sub(r'Update: \d+ \w+ \d{4}', f'Update: {last_data_date}', html)
 
-    # Update MTD chip
     wib = timezone(timedelta(hours=7))
     now = datetime.now(wib)
     MONTH_ID = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']
@@ -443,20 +525,14 @@ def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, las
         mtd_text = f'MTD s/d {last_cutoff} {MONTH_ID[m_idx]} {now.year}'
         html = re.sub(r'MTD s/d \d+ \w+ \d{4}', mtd_text, html)
 
-    # Update MONTHS
     html = re.sub(r'const MONTHS=\[[^\]]+\]', f'const MONTHS={jd(months)}', html)
-
-    # Update LAST_MONTH
     html = re.sub(r"const LAST_MONTH='[A-Za-z]+'", f"const LAST_MONTH='{months[-1]}'", html)
-
-    # Update PERIOD_CONFIG
     html = re.sub(
         r'const PERIOD_CONFIG=\{[^;]+\};',
         f'const PERIOD_CONFIG={{partial_months:{jd(list(partial_months.keys()))},cutoff:{jd(partial_months)}}};',
         html
     )
 
-    # Update data consts
     html = replace_section(html, 'SITE_MONTHLY_2025', jd(sm25), 'SITE_MONTHLY')
     html = replace_section(html, 'SITE_MONTHLY',      jd(sm26), 'ALL_MPP')
     html = replace_section(html, 'ALL_MPP',           jd(all_mpp), 'TOP_MPP')
@@ -470,8 +546,8 @@ def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, las
         f.write(html)
 
     wib = timezone(timedelta(hours=7))
-    now = datetime.now(wib).strftime('%d %b %Y %H:%M WIB')
-    print(f'\n✅ HTML updated: {HTML_PATH} [{now}]')
+    now_str = datetime.now(wib).strftime('%d %b %Y %H:%M WIB')
+    print(f'\n✅ HTML updated: {HTML_PATH} [{now_str}]')
 
 
 # ── Verify ───────────────────────────────────────────────────────────────────
@@ -484,6 +560,18 @@ def verify(sm26):
         print(f'  {sk} {m} trips={actual} {status}')
 
 
+def verify_new_fields(all_mpp, months):
+    """Verifikasi field TAT dan DP_Insentif berhasil terisi."""
+    sample = all_mpp[:5] if all_mpp else []
+    print('\n🔍 Verifikasi field baru (5 driver pertama):')
+    for r in sample:
+        for m in months[:2]:
+            mk = m[:3].lower()
+            tat = r.get(mk+'_tat_avg', 'N/A')
+            dp  = r.get(mk+'_dp_ins', 'N/A')
+            print(f'  {r["name"][:20]:<20} {mk}: tat_avg={tat}, dp_ins={dp}')
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
@@ -493,11 +581,10 @@ def main():
     wb26 = gc.open_by_key(os.environ['SHEET_ID_2026'])
     wb25 = gc.open_by_key(os.environ['SHEET_ID_2025'])
 
-    # Auto-detect months dari sheet 2026
     months, partial_months, last_data_date = detect_months_and_partial(wb26, SITES_26)
 
     sm26 = {s:{} for s in SITES_26}
-    sm25 = {s:{} for s in SITES_26}  # semua site, bukan cuma NDC
+    sm25 = {s:{} for s in SITES_26}
     mpp_raw = {}
 
     print('\n📥 Extracting 2026...')
@@ -505,18 +592,18 @@ def main():
         try:
             extract_sheet(wb26.worksheet(site), site, months, sm26, mpp_raw,
                          partial_months=partial_months, is_2025=False)
-            if i < len(SITES_26)-1: time.sleep(10)  # hindari quota exceeded
+            if i < len(SITES_26)-1: time.sleep(10)
         except gspread.exceptions.WorksheetNotFound:
             print(f'  [MISS] {site}')
 
     print('\n📥 Extracting 2025...')
     mpp_raw_25 = {}
     for i, site in enumerate(SITES_26):
-        tab_name = SITES_25_TAB_MAP.get(site, site)  # pakai nama tab 2025
+        tab_name = SITES_25_TAB_MAP.get(site, site)
         try:
             extract_sheet(wb25.worksheet(tab_name), site, MONTHS_2025, sm25, mpp_raw_25,
                          partial_months=partial_months, is_2025=True)
-            if i < len(SITES_26)-1: time.sleep(10)  # hindari quota exceeded
+            if i < len(SITES_26)-1: time.sleep(10)
         except gspread.exceptions.WorksheetNotFound:
             print(f'  [MISS] {site} (tab: {tab_name})')
 
@@ -524,8 +611,10 @@ def main():
     all_mpp, top20 = build_mpp_tables(mpp_raw, months)
     insight = build_insight_data(sm26, sm25, SITES_26, months, partial_months)
 
-    print('\n🔍 Verifikasi:')
+    print('\n🔍 Verifikasi trip count:')
     verify(sm26)
+
+    verify_new_fields(all_mpp, months)
 
     print('\n✏️  Updating HTML...')
     update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date)

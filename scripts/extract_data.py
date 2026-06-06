@@ -396,7 +396,9 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         for mo, ins in mpp_month[nik].items():
             mpp_raw[nik]['months'][mo] = mpp_raw[nik]['months'].get(mo, 0) + ins
 
-        # Merge TAT dan DP_Insentif
+        # Merge TAT dan DP_Insentif — setdefault utk handle NIK yg sudah ada dari site lain
+        mpp_raw[nik].setdefault('tat', {})
+        mpp_raw[nik].setdefault('dp_ins', {})
         for mo, mins in tat_data[nik].items():
             existing = mpp_raw[nik]['tat'].get(mo, [])
             mpp_raw[nik]['tat'][mo] = existing + mins

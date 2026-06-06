@@ -2038,8 +2038,16 @@ function renderJalurTable(){
     return Math.round(v).toLocaleString('id-ID');
   }
   // Compute totals per jalur
+  const IS_RATIO=metric==='do_trip'||metric==='dp_trip';
   const totals={};
-  jalurList.forEach(j=>{totals[j]=months.reduce((s,m)=>s+getVal(jalurMap[j][m]),0);});
+  jalurList.forEach(j=>{
+    const mVals=months.map(m=>getVal(jalurMap[j][m])).filter(v=>v>0);
+    if(IS_RATIO){
+      totals[j]=mVals.length?+(mVals.reduce((a,b)=>a+b,0)/mVals.length).toFixed(2):0;
+    } else {
+      totals[j]=months.reduce((s,m)=>s+getVal(jalurMap[j][m]),0);
+    }
+  });
   // Sort by total desc
   jalurList.sort((a,b)=>totals[b]-totals[a]);
   // Heatmap
@@ -2060,7 +2068,7 @@ function renderJalurTable(){
     return 'background:#e4ecf4;color:#4a5568';
   }
   const mHeaders=months.map(m=>`<th class="r" style="font-size:10px;color:#7a94b0;padding:7px 8px">${MLBL_J[m]||m}</th>`).join('');
-  if(thead) thead.innerHTML=`<tr style="border-bottom:2px solid #e4ecf4"><th style="text-align:left;font-size:10px;color:#7a94b0;padding:7px 9px;width:32px">#</th><th style="text-align:left;font-size:10px;color:#7a94b0;padding:7px 9px">JALUR</th>${mHeaders}<th class="r" style="font-size:10px;color:#7a94b0;padding:7px 9px">TOTAL</th></tr>`;
+  if(thead) thead.innerHTML=`<tr style="border-bottom:2px solid #e4ecf4"><th style="text-align:left;font-size:10px;color:#7a94b0;padding:7px 9px;width:32px">#</th><th style="text-align:left;font-size:10px;color:#7a94b0;padding:7px 9px">JALUR</th>${mHeaders}<th class="r" style="font-size:10px;color:#7a94b0;padding:7px 9px">${IS_RATIO?"AVG":"TOTAL"}</th></tr>`;
   const rows=jalurList.map((j,i)=>{
     const cols=months.map(m=>{
       const v=getVal(jalurMap[j][m]);

@@ -1993,102 +1993,146 @@ function renderJalurTable(){
   const sites=getSites();
   const months=getMonths();
   const metric=document.getElementById('jalurMetricSel')?.value||'ins';
+  const IS_RATIO=metric==='do_trip'||metric==='dp_trip';
   const MLBL_J={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',
     June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
-  const METRIC_LABEL={ins:'Insentif',ujp:'UJP',trips:'Trip',do_:'DO',dp:'DP','do_trip':'DO/Trip','dp_trip':'DP/Trip'};
+  const MONTH_ORDER=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const METRIC_LABEL={ins:'Insentif',ujp:'UJP',trips:'Trip','do_':'DO',dp:'DP','do_trip':'DO/Trip','dp_trip':'DP/Trip'};
+
+  // Build jalurMap[area][month] — aggregate from ALL months (not just filter), filter shown later
   const jalurMap={};
   sites.forEach(sk=>{
     const siteData=SITE_MONTHLY[sk];
     if(!siteData||!siteData._areas) return;
     const areasObj=siteData._areas;
-    months.forEach(m=>{
+    MONTH_ORDER.forEach(m=>{
       Object.entries(areasObj).forEach(([area,mdata])=>{
         const d=mdata[m];
         if(!d) return;
         if(!jalurMap[area]) jalurMap[area]={};
-        if(!jalurMap[area][m]) jalurMap[area][m]={trips:0,do_:0,dp:0,ujp:0,ins:0};
+        if(!jalurMap[area][m]) jalurMap[area][m]={trips:0,'do_':0,dp:0,ujp:0,ins:0};
         jalurMap[area][m].trips+=d.trips||0;
-        jalurMap[area][m].do_+=d.do_||0;
+        jalurMap[area][m]['do_']+=d['do_']||0;
         jalurMap[area][m].dp+=d.dp||0;
         jalurMap[area][m].ujp+=d.ujp||0;
         jalurMap[area][m].ins+=d.ins||0;
       });
     });
   });
+
   const thead=document.getElementById('jalurThead');
   const tbody=document.getElementById('jalurBody');
   const cap=document.getElementById('jalurCaption');
   if(!tbody) return;
-  const jalurList=Object.keys(jalurMap);
+
+  // Only months that are in filter AND have at least some data
+  const activeMths=MONTH_ORDER.filter(m=>months.includes(m)&&Object.values(jalurMap).some(jm=>jm[m]&&(jm[m].ins||jm[m].trips)));
+  const jalurList=Object.keys(jalurMap).filter(j=>activeMths.some(m=>jalurMap[j][m]));
   if(!jalurList.length){
-    tbody.innerHTML='<tr><td colspan="99" style="text-align:center;color:#94a3b8;padding:24px;font-size:12px">Data jalur belum tersedia — workflow belum dijalankan</td></tr>';
+    tbody.innerHTML='<tr><td colspan="99" style="text-align:center;color:#94a3b8;padding:24px;font-size:12px">Data jalur belum tersedia</td></tr>';
     if(thead) thead.innerHTML='';
     if(cap) cap.textContent='';
     return;
   }
-  function getVal(d,m){
+
+  function getVal(d){
     if(!d) return 0;
-    if(metric==='do_trip') return d.do_&&d.trips?+(d.do_/d.trips).toFixed(2):0;
+    if(metric==='do_trip') return d['do_']&&d.trips?+(d['do_']/d.trips).toFixed(2):0;
     if(metric==='dp_trip') return d.dp&&d.trips?+(d.dp/d.trips).toFixed(2):0;
     return d[metric]||0;
   }
   function fmtVal(v){
-    if(!v) return '—';
+    if(!v) return '\u2014';
     if(metric==='ins'||metric==='ujp'){
       if(v>=1e9) return 'Rp '+(v/1e9).toFixed(1)+' M';
       if(v>=1e6) return 'Rp '+(v/1e6).toFixed(1)+' Jt';
-      return 'Rp '+Math.round(v/1000)+'K';
+      return 'Rp '+v.toLocaleString('id-ID');
     }
-    if(metric==='do_trip'||metric==='dp_trip') return v.toFixed(2);
-    return Math.round(v).toLocaleString('id-ID');
+    if(IS_RATIO) return v.toFixed(2);
+    return v.toLocaleString('id-ID');
   }
+
+  // Sort state persisted on window
+  if(!window._jalurSort) window._jalurSort={col:'total',dir:-1};
+
   // Compute totals per jalur
-  const IS_RATIO=metric==='do_trip'||metric==='dp_trip';
   const totals={};
   jalurList.forEach(j=>{
-    const mVals=months.map(m=>getVal(jalurMap[j][m])).filter(v=>v>0);
-    if(IS_RATIO){
-      totals[j]=mVals.length?+(mVals.reduce((a,b)=>a+b,0)/mVals.length).toFixed(2):0;
-    } else {
-      totals[j]=months.reduce((s,m)=>s+getVal(jalurMap[j][m]),0);
-    }
+    const mVals=activeMths.map(m=>getVal(jalurMap[j][m])).filter(v=>v>0);
+    totals[j]=IS_RATIO
+      ?(mVals.length?+(mVals.reduce((a,b)=>a+b,0)/mVals.length).toFixed(2):0)
+      :activeMths.reduce((s,m)=>s+getVal(jalurMap[j][m]),0);
   });
-  // Sort by total desc
-  jalurList.sort((a,b)=>totals[b]-totals[a]);
-  // Heatmap
-  const totalMax=Math.max(...jalurList.map(j=>totals[j]),1);
+
+  // Sort
+  const sCol=window._jalurSort.col;
+  const sDir=window._jalurSort.dir;
+  jalurList.sort((a,b)=>{
+    const va=sCol==='total'?totals[a]:getVal(jalurMap[a][sCol]);
+    const vb=sCol==='total'?totals[b]:getVal(jalurMap[b][sCol]);
+    return (vb-va)*sDir;
+  });
+
+  // Heatmap per column
   const colMaxes={};
-  months.forEach(m=>{const vals=jalurList.map(j=>getVal(jalurMap[j][m]));colMaxes[m]=Math.max(...vals,1);});
-  function heatStyle(v,max){
-    if(!v||!max) return 'color:#c0cad8';
-    const pct=Math.min(v/max,1);
-    const alpha=0.12+0.55*pct;
-    return `background:rgba(2,49,136,${alpha.toFixed(2)});color:${pct>0.55?'#fff':'#1a2e45'}`;
+  activeMths.forEach(m=>{
+    const vals=jalurList.map(j=>getVal(jalurMap[j][m]));
+    colMaxes[m]=Math.max(...vals,1);
+  });
+  const totalMax=Math.max(...jalurList.map(j=>totals[j]),1);
+  function heatStyle(v,mx){
+    if(!v||!mx) return '';
+    const pct=Math.min(v/mx,1);
+    const alpha=0.12+pct*0.55;
+    return 'background:rgba(2,49,136,'+alpha.toFixed(2)+');color:'+(pct>0.55?'#fff':'#1a2e45')+';';
   }
-  // Rank badge colors
-  function rankStyle(i){
-    if(i===0) return 'background:#f59e0b;color:#fff';
-    if(i===1) return 'background:#94a3b8;color:#fff';
-    if(i===2) return 'background:#b45309;color:#fff';
-    return 'background:#e4ecf4;color:#4a5568';
+
+  // Sort arrow
+  function sortArrow(col){
+    if(window._jalurSort.col!==col) return '<span style="opacity:.25;font-size:9px">\u21c5</span>';
+    return window._jalurSort.dir===-1
+      ?'<span style="font-size:10px;color:#023188">\u2193</span>'
+      :'<span style="font-size:10px;color:#023188">\u2191</span>';
   }
-  const mHeaders=months.map(m=>`<th class="r" style="font-size:10px;color:#7a94b0;padding:7px 8px">${MLBL_J[m]||m}</th>`).join('');
-  if(thead) thead.innerHTML=`<tr style="border-bottom:2px solid #e4ecf4"><th style="text-align:left;font-size:10px;color:#7a94b0;padding:7px 9px;width:32px">#</th><th style="text-align:left;font-size:10px;color:#7a94b0;padding:7px 9px">JALUR</th>${mHeaders}<th class="r" style="font-size:10px;color:#7a94b0;padding:7px 9px">${IS_RATIO?"AVG":"TOTAL"}</th></tr>`;
+  window._thClick=function(col){
+    if(window._jalurSort.col===col) window._jalurSort.dir*=-1;
+    else window._jalurSort={col,dir:-1};
+    renderJalurTable();
+  };
+
+  // Thead
+  const thSt='padding:7px 9px;font-size:10px;color:#7a94b0;font-weight:500;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e8f0fb;cursor:pointer;white-space:nowrap;user-select:none';
+  const mHeaders=activeMths.map(m=>'<th class="r" style="'+thSt+'" onclick="window._thClick(\'' +m+ '\')">'+(MLBL_J[m]||m)+' '+sortArrow(m)+'</th>').join('');
+  const totalLbl=IS_RATIO?'AVG':'TOTAL';
+  if(thead) thead.innerHTML='<tr><th style="'+thSt+';cursor:default">#</th><th style="'+thSt+';cursor:default">JALUR</th>'+mHeaders+'<th class="r" style="'+thSt+'" onclick="window._thClick(\'total\')">'+totalLbl+' '+sortArrow('total')+'</th></tr>';
+
+  // MoM badge
+  function momBadge(cur,prev){
+    if(!prev||!cur||prev===0) return '';
+    const diff=cur-prev;
+    const pct=Math.abs(diff/prev*100);
+    if(pct<1) return '';
+    const up=diff>0;
+    return '<span style="display:inline-block;margin-left:4px;font-size:9px;padding:1px 4px;border-radius:8px;background:'+(up?'#dcfce7':'#fee2e2')+';color:'+(up?'#15803d':'#dc2626')+';font-weight:700">'+(up?'\u2191':'\u2193')+pct.toFixed(0)+'%</span>';
+  }
+
+  // Rows
+  const medals=['\ud83e\udd47','\ud83e\udd48','\ud83e\udd49'];
   const rows=jalurList.map((j,i)=>{
-    const cols=months.map(m=>{
-      const v=getVal(jalurMap[j][m]);
-      return`<td class="r" style="padding:7px 8px;font-size:11px;border-bottom:1px solid #f2f6fb;${heatStyle(v,colMaxes[m])}">${fmtVal(v)}</td>`;
-    }).join('');
+    const rank=i<3?('<span style="font-size:13px">'+medals[i]+'</span>'):('<span style="color:#94a3b8;font-size:11px">'+(i+1)+'</span>');
     const tot=totals[j];
-    return`<tr>
-      <td style="padding:7px 9px;border-bottom:1px solid #f2f6fb"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:700;${rankStyle(i)}">${i+1}</span></td>
-      <td style="padding:7px 9px;font-weight:600;font-size:12px;color:#1a2e45;border-bottom:1px solid #f2f6fb">${j}</td>
-      ${cols}
-      <td class="r" style="padding:7px 9px;font-weight:700;font-size:12px;border-bottom:1px solid #f2f6fb;${heatStyle(tot,totalMax)}">${fmtVal(tot)}</td>
-    </tr>`;
+    const cols=activeMths.map((m,mi)=>{
+      const v=getVal(jalurMap[j][m]);
+      const prevM=mi>0?activeMths[mi-1]:null;
+      const prevV=prevM?getVal(jalurMap[j][prevM]):0;
+      const badge=momBadge(v,prevV);
+      return '<td class="r" style="padding:7px 8px;font-size:11px;border-bottom:1px solid #f2f6fb;'+heatStyle(v,colMaxes[m])+'">'+fmtVal(v)+badge+'</td>';
+    }).join('');
+    return '<tr><td style="padding:7px 9px;border-bottom:1px solid #f2f6fb;text-align:center">'+rank+'</td><td style="padding:7px 9px;font-size:12px;font-weight:500;border-bottom:1px solid #f2f6fb;white-space:nowrap">'+j+'</td>'+cols+'<td class="r" style="padding:7px 9px;font-size:11px;font-weight:700;border-bottom:1px solid #f2f6fb;'+heatStyle(tot,totalMax)+'">'+fmtVal(tot)+'</td></tr>';
   }).join('');
-  if(tbody) tbody.innerHTML=rows;
-  if(cap) cap.textContent=`${jalurList.length} jalur · ${METRIC_LABEL[metric]||metric} · ${sites.length} site · ${months.map(m=>MLBL_J[m]||m).join('–')}`;
+  tbody.innerHTML=rows;
+
+  if(cap) cap.textContent=jalurList.length+' jalur \u00b7 '+(METRIC_LABEL[metric]||metric)+' \u00b7 '+sites.length+' site \u00b7 '+activeMths.map(m=>MLBL_J[m]||m).join('\u2013');
 }
 
 Chart.register(ChartDataLabels);

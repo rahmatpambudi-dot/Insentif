@@ -1112,7 +1112,7 @@ function buildCharts(){
   const normCurve=midpts.map(x=>{const z=(x-distMean)/distStd;return distTotal*(500000/(distStd||1))*Math.exp(-0.5*z*z)/Math.sqrt(2*Math.PI);});
   const distCounts=bins.map((_,i)=>histRows.filter(v=>v>=bins[i]&&v<bins[i+1]).length);
   mc('distChart',{type:'bar',data:{labels:bl,datasets:[
-    {type:'bar',label:'Jumlah Driver',data:distCounts,backgroundColor:['#22c55e88','#f59c1a88','#f59c1a88','#ef444488','#ef444488'],borderRadius:4,borderWidth:0,order:2,datalabels:{display:true,anchor:'center',align:'center',color:'#fff',font:{size:11,weight:'700'},formatter:v=>v||''}},
+    {type:'bar',label:'Jumlah Driver',data:distCounts,backgroundColor:['#ef444488','#f59c1a88','#f59c1a88','#22c55e88','#22c55e88'],borderRadius:4,borderWidth:0,order:2,datalabels:{display:true,anchor:'center',align:'center',color:'#fff',font:{size:11,weight:'700'},formatter:v=>v||''}},
     {type:'line',label:'Kurva Normal',data:normCurve,borderColor:'#023188',borderWidth:2,pointRadius:4,pointBackgroundColor:'#023188',fill:false,tension:.4,order:1,datalabels:{display:false}}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{...to,autoSkip:false},grid:{display:false}},y:{ticks:to,grid:go}}}});
 

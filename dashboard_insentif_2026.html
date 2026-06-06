@@ -415,7 +415,7 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
           
         </div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th style="width:40px">#</th><th>Nama</th><th>Role</th><th>Site</th><th>Bulan</th><th>Kategori</th><th class="r">Insentif MPP</th><th class="r">Total YTD</th><th class="r" title="Rata-rata durasi bongkar per trip. ≤8j=hijau, 8–10j=kuning, >10j=merah. TAT minus &amp; >12j di-exclude.">TAT Avg ⓘ</th><th class="r">DP Insentif</th></tr></thead>
+          <thead><tr><th style="width:40px">#</th><th>Nama</th><th>Role</th><th>Site</th><th>Bulan</th><th>Kategori</th><th class="r">Insentif MPP</th><th class="r">Total YTD</th><th class="r" title="Rata-rata durasi bongkar per trip. ≤8j=hijau, 8–10j=kuning, >10j=merah. TAT minus &amp; >12j di-exclude.">TAT Avg ⓘ</th><th class="r" title="Total akumulasi durasi bongkar semua trip valid dalam sebulan">TAT Akumulasi ⓘ</th><th class="r">DP Insentif</th></tr></thead>
           <tbody id="distBody"></tbody>
         </table></div>
         <div class="pager"><div id="distPI"></div><div class="pbtns" id="distPB"></div></div>
@@ -940,7 +940,7 @@ function renderDistTable(){
       if(ins<=0) return;
       const cat=ins>1500000?'High':ins>=500000?'Mid':'Low';
       if(DIST_CAT!=='all'&&cat!==DIST_CAT) return;
-      rows.push({nik:r.nik,name:r.name,site:r.site,role:r.role||'Driver',month:m,ins,cat,total:r.total,tat_avg:r[mk+'_tat_avg']||0,dp_ins:r[mk+'_dp_ins']||0});
+      rows.push({nik:r.nik,name:r.name,site:r.site,role:r.role||'Driver',month:m,ins,cat,total:r.total,tat_avg:r[mk+'_tat_avg']||0,tat_acc:r[mk+'_tat_acc']||0,dp_ins:r[mk+'_dp_ins']||0});
     });
   });
   rows.sort((a,b)=>{
@@ -992,10 +992,17 @@ function renderDistTable(){
       const cls=tatVal>600?'over':tatVal>480?'warn':'ok';
       tatCell=`<span class="tat-chip ${cls}">${str}</span>`;
     }
+    // TAT Akumulasi
+    const tatAcc=r.tat_acc||0;
+    let tatAccCell='<span style="color:var(--color-text-tertiary)">—</span>';
+    if(tatAcc>0){
+      const ah=Math.floor(tatAcc/60),am=Math.round(tatAcc%60);
+      tatAccCell=`<span style="font-size:11px;font-weight:600;color:#5a7090">${ah}j ${am>0?am+'m':''}</span>`;
+    }
     // DP Insentif
     const dpIns=r.dp_ins||0;
     const dpInsCell=dpIns?dpIns.toLocaleString('id-ID')+' titik':'—';
-    return`<tr><td style="color:#94a3b8;font-size:11px">${st+i+1}</td><td style="font-weight:500">${nameCell}</td><td>${roleBadge}</td><td>${siteBadge}</td><td style="font-size:11px;color:#5a7090">${MNAME_FULL[r.month]||r.month}</td><td>${catBadge}</td><td class="r" style="font-weight:600">Rp ${r.ins.toLocaleString('id-ID')}</td><td class="r" style="color:#023188;font-weight:600">${ytd?'Rp '+Math.round(ytd/1e6)+' Jt':'—'}</td><td class="r">${tatCell}</td><td class="r" style="color:#5a7090">${dpInsCell}</td></tr>`;
+    return`<tr><td style="color:#94a3b8;font-size:11px">${st+i+1}</td><td style="font-weight:500">${nameCell}</td><td>${roleBadge}</td><td>${siteBadge}</td><td style="font-size:11px;color:#5a7090">${MNAME_FULL[r.month]||r.month}</td><td>${catBadge}</td><td class="r" style="font-weight:600">Rp ${r.ins.toLocaleString('id-ID')}</td><td class="r" style="color:#023188;font-weight:600">${ytd?'Rp '+Math.round(ytd/1e6)+' Jt':'—'}</td><td class="r">${tatCell}</td><td class="r">${tatAccCell}</td><td class="r" style="color:#5a7090">${dpInsCell}</td></tr>`;
   }).join('');
   document.getElementById('distPI').textContent=`${st+1}–${en} dari ${total} MPP`;
   const pp=[];for(let p=Math.max(1,DIST_PAGE-2);p<=Math.min(tp,DIST_PAGE+2);p++)pp.push(p);

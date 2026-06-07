@@ -116,9 +116,9 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
 .bdg-ndc{background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:500;display:inline-block}
 .bdg-hub{background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:500;display:inline-block}
 .sbadge{padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
-.cat-h{background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
+.cat-h{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
 .cat-m{background:#fef9c3;color:#a16207;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
-.cat-l{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
+.cat-l{background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
 .pager{display:flex;align-items:center;justify-content:space-between;margin-top:9px;font-size:11px;color:#7a94b0}
 .pbtns{display:flex;gap:4px}
 .pbtn{padding:3px 8px;border:1px solid #c2d0e5;border-radius:5px;background:#fff;cursor:pointer;font-size:11px;color:#4a5568}
@@ -208,24 +208,6 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
 .tat-chip.warn{background:#fef9c3;color:#a16207}
 .tat-chip.over{background:#fee2e2;color:#dc2626}
 .tat-chip.na{background:#f0f5fb;color:#94a3b8}
-
-/* MPP vs Jalur High Demand */
-.hd-wrap{margin-top:18px;padding-top:16px;border-top:1px solid #e8f0fb}
-.hd-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.hd-title{font-size:13px;font-weight:700;color:#1a2e45}
-.hd-sub{font-size:11px;color:#7a94b0}
-.hd-pct-bar{background:#f0f5fb;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.hd-pct-label{font-size:11px;color:#5a7090;white-space:nowrap}
-.hd-pct-track{flex:1;min-width:80px;height:8px;background:#dce8f5;border-radius:4px;overflow:hidden}
-.hd-pct-fill{height:100%;background:#023188;border-radius:4px;transition:width .4s}
-.hd-pct-val{font-size:13px;font-weight:700;color:#023188;white-space:nowrap}
-.hd-jalur-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.hd-tab{padding:4px 11px;border:1px solid #c2d0e5;border-radius:12px;background:#f0f5fb;font-size:11px;color:#4a5568;cursor:pointer;font-weight:500;transition:all .15s}
-.hd-tab:hover{background:#dce8f5}
-.hd-tab.on{background:#023188;color:#fff;border-color:#023188}
-.hd-table{width:100%;border-collapse:collapse;font-size:12px}
-.hd-table th{color:#7a94b0;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;border-bottom:1px solid #e8f0fb;text-align:left;white-space:nowrap}
-.hd-table th.r{text-align:right}
 </style>
 </head>
 <body>
@@ -588,21 +570,6 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
                 <thead id="jalurThead"></thead>
                 <tbody id="jalurBody"></tbody>
               </table>
-              <div class="hd-wrap" id="hdWrap" style="display:none">
-                <div class="hd-header">
-                  <span class="hd-title">&#x1F504; Rotasi MPP &mdash; Jalur High Demand</span>
-                  <span class="hd-sub" id="hdSub"></span>
-                </div>
-                <div class="hd-pct-bar">
-                  <span class="hd-pct-label">% Insentif Top 5 Jalur vs Total</span>
-                  <div class="hd-pct-track"><div class="hd-pct-fill" id="hdPctFill" style="width:0%"></div></div>
-                  <span class="hd-pct-val" id="hdPctVal">--</span>
-                </div>
-                <div class="hd-jalur-tabs" id="hdTabs"></div>
-                <div style="overflow-x:auto">
-                  <table class="hd-table"><thead id="hdThead"></thead><tbody id="hdBody"></tbody></table>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -821,9 +788,9 @@ function renderKPI(id,cc){
 function renderKPIDist(){
   const sites=getSites(),months=getMonths(),d=agg(sites,months);
   document.getElementById('kpi-dist').innerHTML=[
-    {l:'High >1.5M',v:d.mh,c:'k-r',s:'MPP'},
+    {l:'High >1.5M',v:d.mh,c:'k-g',s:'MPP'},
     {l:'Mid 500K–1.5M',v:d.mm,c:'k-a',s:'MPP'},
-    {l:'Low <500K',v:d.ml,c:'k-g',s:'MPP'},
+    {l:'Low <500K',v:d.ml,c:'k-r',s:'MPP'},
     {l:'Total MPP',v:d.mh+d.mm+d.ml,c:'k-b',s:'driver + kenek'},
   ].map(k=>`<div class="kpi ${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
 }
@@ -1080,9 +1047,9 @@ function buildCharts(){
   const catMidD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_mid||0});return v;});
   const catLowD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_low||0});return v;});
   mc('catChart',{type:'bar',data:{labels:MLBL,datasets:[
-    {label:'High',data:catHighD,backgroundColor:'#ef444499',borderRadius:2},
+    {label:'High',data:catHighD,backgroundColor:'#22c55e99',borderRadius:2},
     {label:'Mid',data:catMidD,backgroundColor:'#f59c1a99'},
-    {label:'Low',data:catLowD,backgroundColor:'#22c55e99',
+    {label:'Low',data:catLowD,backgroundColor:'#ef444499',
       datalabels:{display:true,anchor:'end',align:'top',offset:2,color:'#1a2e45',
         font:{size:10,weight:'700'},
         formatter:(v,ctx)=>{
@@ -1112,7 +1079,7 @@ function buildCharts(){
   const normCurve=midpts.map(x=>{const z=(x-distMean)/distStd;return distTotal*(500000/(distStd||1))*Math.exp(-0.5*z*z)/Math.sqrt(2*Math.PI);});
   const distCounts=bins.map((_,i)=>histRows.filter(v=>v>=bins[i]&&v<bins[i+1]).length);
   mc('distChart',{type:'bar',data:{labels:bl,datasets:[
-    {type:'bar',label:'Jumlah Driver',data:distCounts,backgroundColor:['#22c55e88','#f59c1a88','#f59c1a88','#ef444488','#ef444488'],borderRadius:4,borderWidth:0,order:2,datalabels:{display:true,anchor:'center',align:'center',color:'#fff',font:{size:11,weight:'700'},formatter:v=>v||''}},
+    {type:'bar',label:'Jumlah Driver',data:distCounts,backgroundColor:['#ef444488','#f59c1a88','#f59c1a88','#22c55e88','#22c55e88'],borderRadius:4,borderWidth:0,order:2,datalabels:{display:true,anchor:'center',align:'center',color:'#fff',font:{size:11,weight:'700'},formatter:v=>v||''}},
     {type:'line',label:'Kurva Normal',data:normCurve,borderColor:'#023188',borderWidth:2,pointRadius:4,pointBackgroundColor:'#023188',fill:false,tension:.4,order:1,datalabels:{display:false}}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{...to,autoSkip:false},grid:{display:false}},y:{ticks:to,grid:go}}}});
 
@@ -1205,13 +1172,13 @@ function _buildPopup(sk){
         <span style="font-weight:600;color:#1a2e45">${v}${p25&&typeof raw==='number'?yoy(raw,p25,hb):''}</span>
       </div>`).join('')}
       <div style="display:flex;gap:5px;margin-top:8px">
-        <div style="flex:1;text-align:center;background:#fee2e2;#dc2626;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#dcfce7;color:#15803d;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mh}</div><div style="font-size:9px">High</div>
         </div>
-        <div style="flex:1;text-align:center;background:#dcfce7;#15803d;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#fef9c3;color:#a16207;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mm}</div><div style="font-size:9px">Mid</div>
         </div>
-        <div style="flex:1;text-align:center;background:#dcfce7;#15803d;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#fee2e2;color:#dc2626;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.ml}</div><div style="font-size:9px">Low</div>
         </div>
       </div>
@@ -1382,13 +1349,13 @@ function _popup(sk){
         <span style="font-weight:600;color:#1a2e45">${v}${typeof p==='number'&&p>0&&typeof raw==='number'?yoyBadge(raw,p,h):''}</span>
       </div>`).join('')}
       <div style="display:flex;gap:5px;margin-top:8px">
-        <div style="flex:1;text-align:center;background:#fee2e2;#dc2626;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#dcfce7;color:#15803d;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mh}</div><div style="font-size:9px">High</div>
         </div>
-        <div style="flex:1;text-align:center;background:#dcfce7;#15803d;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#fef9c3;color:#a16207;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mm}</div><div style="font-size:9px">Mid</div>
         </div>
-        <div style="flex:1;text-align:center;background:#dcfce7;#15803d;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#fee2e2;color:#dc2626;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.ml}</div><div style="font-size:9px">Low</div>
         </div>
       </div>
@@ -2166,7 +2133,6 @@ function renderJalurTable(){
   tbody.innerHTML=rows;
 
   if(cap) cap.textContent=jalurList.length+' jalur \u00b7 '+(METRIC_LABEL[metric]||metric)+' \u00b7 '+sites.length+' site \u00b7 '+activeMths.map(m=>MLBL_J[m]||m).join('\u2013');
-  renderMPPJalur();
 }
 
 Chart.register(ChartDataLabels);
@@ -2179,194 +2145,6 @@ setTimeout(()=>{
   if(typeof L!=='undefined'){_initMap();}
   else{setTimeout(_initMap,1000);}
 },500);
-
-// ── MPP vs Jalur High Demand ──────────────────────────────────
-let _hdActiveJalur = null;
-
-function renderMPPJalur() {
-  const hdWrap = document.getElementById('hdWrap');
-  if (!hdWrap) return;
-
-  const sites  = getSites();
-  const months = getMonths();
-  const metric = document.getElementById('jalurMetricSel') ? document.getElementById('jalurMetricSel').value : 'ins';
-  const IS_RATIO = metric === 'do_trip' || metric === 'dp_trip';
-
-  const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const M2K = {January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
-    June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
-  const MLBL = {January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',
-    June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
-  const METRIC_LABEL = {ins:'Insentif',ujp:'UJP',trips:'Trip','do_':'DO',dp:'DP'};
-
-  if (IS_RATIO) { hdWrap.style.display = 'none'; return; }
-
-  // Build nilai per jalur dari _areas
-  var jalurData = {};
-  sites.forEach(function(sk) {
-    var siteData = SITE_MONTHLY[sk];
-    if (!siteData || !siteData._areas) return;
-    Object.keys(siteData._areas).forEach(function(area) {
-      var mdata = siteData._areas[area];
-      if (!jalurData[area]) jalurData[area] = {ins:0, trips:0, 'do_':0, dp:0, ujp:0};
-      months.forEach(function(m) {
-        var d = mdata[m];
-        if (!d) return;
-        jalurData[area].ins   += d.ins   || 0;
-        jalurData[area].trips += d.trips || 0;
-        jalurData[area]['do_'] += d['do_'] || 0;
-        jalurData[area].dp    += d.dp    || 0;
-        jalurData[area].ujp   += d.ujp   || 0;
-      });
-    });
-  });
-
-  function jalurVal(area) {
-    var d = jalurData[area];
-    if (!d) return 0;
-    if (metric === 'ins')   return d.ins;
-    if (metric === 'trips') return d.trips;
-    if (metric === 'do_')   return d['do_'];
-    if (metric === 'dp')    return d.dp;
-    if (metric === 'ujp')   return d.ujp;
-    return d.ins;
-  }
-
-  var allJalur = Object.keys(jalurData).filter(function(j) { return jalurVal(j) > 0; });
-  allJalur.sort(function(a, b) { return jalurVal(b) - jalurVal(a); });
-  var top5 = allJalur.slice(0, 5);
-
-  if (!top5.length) { hdWrap.style.display = 'none'; return; }
-
-  // % insentif top5 vs total
-  var totalAllIns = allJalur.reduce(function(s, j) { return s + jalurData[j].ins; }, 0);
-  var top5Ins     = top5.reduce(function(s, j) { return s + jalurData[j].ins; }, 0);
-  var pct = totalAllIns > 0 ? Math.round(top5Ins / totalAllIns * 100) : 0;
-
-  var pctFill = document.getElementById('hdPctFill');
-  var pctVal  = document.getElementById('hdPctVal');
-  if (pctFill) pctFill.style.width = pct + '%';
-  if (pctVal)  pctVal.textContent  = pct + '% insentif';
-
-  var hdSub = document.getElementById('hdSub');
-  if (hdSub) hdSub.textContent = 'Top 5 · ' + (METRIC_LABEL[metric] || metric) + ' · ' + months.map(function(m){return MLBL[m]||m;}).join('–');
-
-  // Tabs
-  if (!_hdActiveJalur || top5.indexOf(_hdActiveJalur) === -1) _hdActiveJalur = top5[0];
-  var medals = ['🥇','🥈','🥉','4.','5.'];
-  var tabsEl = document.getElementById('hdTabs');
-  if (tabsEl) {
-    tabsEl.innerHTML = top5.map(function(j, i) {
-      var active = j === _hdActiveJalur ? ' on' : '';
-      var label  = (i < 3 ? medals[i] : medals[i]) + ' ' + j;
-      return '<button class="hd-tab' + active + '" onclick="hdTabClick(\'' + j.replace(/\\/g,'\\\\').replace(/'/g,"\\'") + '\')">' + label + '</button>';
-    }).join('');
-  }
-
-  // Build driver table untuk jalur aktif
-  var activeJalur = _hdActiveJalur;
-  var driverRows  = [];
-
-  ALL_MPP.forEach(function(r) {
-    if (sites.indexOf(r.site) === -1) return;
-    if (!r.areas || !r.areas[activeJalur]) return;
-
-    var areaData = r.areas[activeJalur];
-    var tripsToJalur = 0, insToJalur = 0;
-    var totalTripAllArea = 0, totalIns = 0;
-
-    months.forEach(function(m) {
-      var mk = M2K[m];
-      if (!mk) return;
-      var ad = areaData[mk];
-      if (ad) {
-        tripsToJalur += ad.trips || 0;
-        insToJalur   += ad.ins   || 0;
-      }
-      totalIns += r[mk] || 0;
-    });
-
-    // Total trip semua area dari bulan aktif
-    Object.keys(r.areas).forEach(function(areaKey) {
-      months.forEach(function(m) {
-        var mk = M2K[m];
-        if (!mk) return;
-        var ad2 = r.areas[areaKey][mk];
-        if (ad2) totalTripAllArea += ad2.trips || 0;
-      });
-    });
-
-    if (tripsToJalur <= 0) return;
-
-    var pctTrips = totalTripAllArea > 0 ? Math.round(tripsToJalur / totalTripAllArea * 100) : 0;
-    var pctIns   = totalIns         > 0 ? Math.round(insToJalur   / totalIns         * 100) : 0;
-
-    driverRows.push({
-      name: r.name, site: r.site, role: r.role || 'Driver',
-      tripsToJalur: tripsToJalur, insToJalur: insToJalur,
-      pctTrips: pctTrips, pctIns: pctIns
-    });
-  });
-
-  driverRows.sort(function(a, b) { return b.tripsToJalur - a.tripsToJalur; });
-
-  var thead = document.getElementById('hdThead');
-  if (thead) thead.innerHTML = '<tr>'
-    + '<th style="width:32px">#</th>'
-    + '<th>Nama</th>'
-    + '<th>Role</th>'
-    + '<th>Site</th>'
-    + '<th class="r">Trip ke Jalur</th>'
-    + '<th class="r">% Trip</th>'
-    + '<th class="r">Insentif di Jalur</th>'
-    + '<th class="r">% Ins</th>'
-    + '</tr>';
-
-  var tbody = document.getElementById('hdBody');
-  if (!tbody) return;
-
-  if (!driverRows.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px;font-size:12px">Tidak ada driver ke jalur ' + activeJalur + ' pada periode ini</td></tr>';
-    hdWrap.style.display = 'block';
-    return;
-  }
-
-  function fmtRp(v) {
-    if (v >= 1e6) return 'Rp ' + (v/1e6).toFixed(1) + ' Jt';
-    return 'Rp ' + v.toLocaleString('id-ID');
-  }
-
-  tbody.innerHTML = driverRows.map(function(d, i) {
-    var roleBdg = d.role === 'Driver'
-      ? '<span class="bdgr" style="font-size:10px">Driver</span>'
-      : '<span class="bdgk" style="font-size:10px">Kenek</span>';
-    var barCol = d.pctTrips >= 50 ? '#023188' : d.pctTrips >= 30 ? '#3b82f6' : '#93c5fd';
-    var pctBar = '<div style="display:flex;align-items:center;gap:5px;justify-content:flex-end">'
-      + '<div style="width:44px;height:5px;background:#e8f0fb;border-radius:3px;overflow:hidden">'
-      + '<div style="height:100%;width:' + Math.min(d.pctTrips,100) + '%;background:' + barCol + ';border-radius:3px"></div></div>'
-      + '<span style="font-size:11px;font-weight:600;color:' + barCol + '">' + d.pctTrips + '%</span>'
-      + '</div>';
-    var insCol = d.pctIns >= 50 ? '#15803d' : d.pctIns >= 30 ? '#16a34a' : '#5a7090';
-    return '<tr>'
-      + '<td style="color:#94a3b8;font-size:11px;padding:6px 8px;border-bottom:1px solid #f2f6fb">' + (i+1) + '</td>'
-      + '<td style="font-weight:500;padding:6px 8px;border-bottom:1px solid #f2f6fb;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + d.name + '</td>'
-      + '<td style="padding:6px 8px;border-bottom:1px solid #f2f6fb">' + roleBdg + '</td>'
-      + '<td style="padding:6px 8px;border-bottom:1px solid #f2f6fb;font-size:11px">' + d.site + '</td>'
-      + '<td class="r" style="padding:6px 8px;border-bottom:1px solid #f2f6fb;font-weight:600">' + d.tripsToJalur + ' trip</td>'
-      + '<td style="padding:6px 8px;border-bottom:1px solid #f2f6fb">' + pctBar + '</td>'
-      + '<td class="r" style="padding:6px 8px;border-bottom:1px solid #f2f6fb">' + fmtRp(d.insToJalur) + '</td>'
-      + '<td class="r" style="padding:6px 8px;border-bottom:1px solid #f2f6fb;font-weight:600;color:' + insCol + '">' + d.pctIns + '%</td>'
-      + '</tr>';
-  }).join('');
-
-  hdWrap.style.display = 'block';
-}
-
-function hdTabClick(jalur) {
-  _hdActiveJalur = jalur;
-  renderMPPJalur();
-}
-
 </script>
 <style>
   #connectone-back {

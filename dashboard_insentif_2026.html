@@ -116,9 +116,9 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
 .bdg-ndc{background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:500;display:inline-block}
 .bdg-hub{background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:500;display:inline-block}
 .sbadge{padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
-.cat-h{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
+.cat-h{background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
 .cat-m{background:#fef9c3;color:#a16207;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
-.cat-l{background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
+.cat-l{background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;display:inline-block}
 .pager{display:flex;align-items:center;justify-content:space-between;margin-top:9px;font-size:11px;color:#7a94b0}
 .pbtns{display:flex;gap:4px}
 .pbtn{padding:3px 8px;border:1px solid #c2d0e5;border-radius:5px;background:#fff;cursor:pointer;font-size:11px;color:#4a5568}
@@ -788,9 +788,9 @@ function renderKPI(id,cc){
 function renderKPIDist(){
   const sites=getSites(),months=getMonths(),d=agg(sites,months);
   document.getElementById('kpi-dist').innerHTML=[
-    {l:'High >1.5M',v:d.mh,c:'k-g',s:'MPP'},
+    {l:'High >1.5M',v:d.mh,c:'k-r',s:'MPP'},
     {l:'Mid 500K–1.5M',v:d.mm,c:'k-a',s:'MPP'},
-    {l:'Low <500K',v:d.ml,c:'k-r',s:'MPP'},
+    {l:'Low <500K',v:d.ml,c:'k-g',s:'MPP'},
     {l:'Total MPP',v:d.mh+d.mm+d.ml,c:'k-b',s:'driver + kenek'},
   ].map(k=>`<div class="kpi ${k.c}"><div class="kpi-lbl">${k.l}</div><div class="kpi-val">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
 }
@@ -1047,9 +1047,9 @@ function buildCharts(){
   const catMidD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_mid||0});return v;});
   const catLowD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_low||0});return v;});
   mc('catChart',{type:'bar',data:{labels:MLBL,datasets:[
-    {label:'High',data:catHighD,backgroundColor:'#22c55e99',borderRadius:2},
+    {label:'High',data:catHighD,backgroundColor:'#ef444499',borderRadius:2},
     {label:'Mid',data:catMidD,backgroundColor:'#f59c1a99'},
-    {label:'Low',data:catLowD,backgroundColor:'#ef444499',
+    {label:'Low',data:catLowD,backgroundColor:'#22c55e99',
       datalabels:{display:true,anchor:'end',align:'top',offset:2,color:'#1a2e45',
         font:{size:10,weight:'700'},
         formatter:(v,ctx)=>{
@@ -1079,7 +1079,7 @@ function buildCharts(){
   const normCurve=midpts.map(x=>{const z=(x-distMean)/distStd;return distTotal*(500000/(distStd||1))*Math.exp(-0.5*z*z)/Math.sqrt(2*Math.PI);});
   const distCounts=bins.map((_,i)=>histRows.filter(v=>v>=bins[i]&&v<bins[i+1]).length);
   mc('distChart',{type:'bar',data:{labels:bl,datasets:[
-    {type:'bar',label:'Jumlah Driver',data:distCounts,backgroundColor:['#ef444488','#f59c1a88','#f59c1a88','#22c55e88','#22c55e88'],borderRadius:4,borderWidth:0,order:2,datalabels:{display:true,anchor:'center',align:'center',color:'#fff',font:{size:11,weight:'700'},formatter:v=>v||''}},
+    {type:'bar',label:'Jumlah Driver',data:distCounts,backgroundColor:['#22c55e88','#f59c1a88','#f59c1a88','#ef444488','#ef444488'],borderRadius:4,borderWidth:0,order:2,datalabels:{display:true,anchor:'center',align:'center',color:'#fff',font:{size:11,weight:'700'},formatter:v=>v||''}},
     {type:'line',label:'Kurva Normal',data:normCurve,borderColor:'#023188',borderWidth:2,pointRadius:4,pointBackgroundColor:'#023188',fill:false,tension:.4,order:1,datalabels:{display:false}}
   ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{font:{size:10},boxWidth:10}}},scales:{x:{ticks:{...to,autoSkip:false},grid:{display:false}},y:{ticks:to,grid:go}}}});
 
@@ -1172,13 +1172,13 @@ function _buildPopup(sk){
         <span style="font-weight:600;color:#1a2e45">${v}${p25&&typeof raw==='number'?yoy(raw,p25,hb):''}</span>
       </div>`).join('')}
       <div style="display:flex;gap:5px;margin-top:8px">
-        <div style="flex:1;text-align:center;background:#dcfce7;color:#15803d;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#fee2e2;#dc2626;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mh}</div><div style="font-size:9px">High</div>
         </div>
-        <div style="flex:1;text-align:center;background:#fef9c3;color:#a16207;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#dcfce7;#15803d;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mm}</div><div style="font-size:9px">Mid</div>
         </div>
-        <div style="flex:1;text-align:center;background:#fee2e2;color:#dc2626;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#dcfce7;#15803d;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.ml}</div><div style="font-size:9px">Low</div>
         </div>
       </div>
@@ -1349,13 +1349,13 @@ function _popup(sk){
         <span style="font-weight:600;color:#1a2e45">${v}${typeof p==='number'&&p>0&&typeof raw==='number'?yoyBadge(raw,p,h):''}</span>
       </div>`).join('')}
       <div style="display:flex;gap:5px;margin-top:8px">
-        <div style="flex:1;text-align:center;background:#dcfce7;color:#15803d;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#fee2e2;#dc2626;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mh}</div><div style="font-size:9px">High</div>
         </div>
-        <div style="flex:1;text-align:center;background:#fef9c3;color:#a16207;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#dcfce7;#15803d;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.mm}</div><div style="font-size:9px">Mid</div>
         </div>
-        <div style="flex:1;text-align:center;background:#fee2e2;color:#dc2626;border-radius:6px;padding:5px 2px">
+        <div style="flex:1;text-align:center;background:#dcfce7;#15803d;border-radius:6px;padding:5px 2px">
           <div style="font-size:15px;font-weight:700">${s.ml}</div><div style="font-size:9px">Low</div>
         </div>
       </div>

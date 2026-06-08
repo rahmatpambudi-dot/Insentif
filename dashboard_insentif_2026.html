@@ -1851,7 +1851,7 @@ function renderDemandTable(){
       <th class="r">Trip</th><th class="r">DO</th><th class="r">DP</th>
       <th class="r">DO/Trip</th><th class="r">DP/Trip</th><th class="r">DO/DP</th>
       </tr>`;
-    const allMonths=['January','February','March','April'];
+    const allMonths=MONTHS.slice();
     tbody.innerHTML = sites.map(sk=>{
       const c=SITE_COORDS[sk];if(!c)return'';
       const d26={trips:0,do_:0,dp:0}, d25={trips:0,do_:0,dp:0};

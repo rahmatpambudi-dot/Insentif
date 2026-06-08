@@ -1547,7 +1547,7 @@ document.addEventListener('click',function(e){
 function renderInsightProd(){
   const sites=getSites();
   const m=_insightMonth;
-  const MONTHS_ALL=['January','February','March','April'];
+  const MONTHS_ALL=MONTHS.slice();
 
   // Ratio KPI cards
   function agg(sm,mo,sl){const r={trips:0,do_:0,dp:0,ujp:0,ins:0};sl.forEach(sk=>{const d=sm[sk]?.[mo]||{};for(const k in r)r[k]+=d[k]||0;});return r;}
@@ -1590,8 +1590,22 @@ function renderInsightProd(){
 
 // ==================== YoY TRENDLINE CHARTS ====================
 function buildYoYCharts(sites){
-  const MONTHS_ALL=['January','February','March','April'];
-  const MLB=['Jan','Feb','Mar','Apr'];
+  const MNAME_S={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',
+    June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
+  // Dynamic: ikut filter bulan aktif, YTD sampai bulan terpilih
+  const _ms=document.getElementById('monthSel');
+  const _mv=_ms?_ms.value:'all';
+  let MONTHS_ALL;
+  if(_mv==='all'||!_mv){
+    MONTHS_ALL=MONTHS.slice();
+  } else if(typeof MONTH_GROUPS!=='undefined'&&MONTH_GROUPS[_mv]){
+    MONTHS_ALL=MONTH_GROUPS[_mv].filter(m=>MONTHS.includes(m));
+  } else {
+    // Single bulan → tampil YTD dari Jan sampai bulan tersebut
+    const idx=MONTHS.indexOf(_mv);
+    MONTHS_ALL=idx>=0?MONTHS.slice(0,idx+1):[_mv];
+  }
+  const MLB=MONTHS_ALL.map(m=>MNAME_S[m]||m);
   function agg(sm,m,sl){const r={trips:0,do_:0,dp:0,ujp:0,ins:0};sl.forEach(sk=>{const d=sm[sk]?.[m]||{};for(const k in r)r[k]+=d[k]||0;});return r;}
 
   const d26=MONTHS_ALL.map(m=>agg(SITE_MONTHLY,m,sites));

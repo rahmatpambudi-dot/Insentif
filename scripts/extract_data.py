@@ -236,12 +236,16 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         'dp_ins' : col_idx_multi(headers, DP_INS_COL_CANDIDATES),
     }
 
+    # Apakah site ini HUB (bukan NDC) — HUB ambil semua LC type
+    is_hub = site not in ('JBBK','CKP','SDA')
+
     # Log kolom baru
     tat_col_name  = headers[ci['tat']]  if ci['tat']  >= 0 else 'NOT FOUND'
     dp_ins_col_name = headers[ci['dp_ins']] if ci['dp_ins'] >= 0 else 'NOT FOUND'
     print(f'  [COL] {site} — TAT: "{tat_col_name}" | DP_Insentif: "{dp_ins_col_name}"')
 
     monthly     = defaultdict(empty_month)
+    monthly_c   = defaultdict(empty_month)  # LC type C only (NDC) / semua (HUB)
     yoy_partial = defaultdict(empty_month)
     period_partial     = defaultdict(empty_month)
     mom_period_partial = defaultdict(empty_month)
@@ -267,6 +271,8 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         lc_raw     = str(g(ci['lc'])).strip()
         lc_empty   = not lc_raw or lc_raw in ('','None','#N/A')
         has_driver = bool(drv and drv.upper() not in ('','NONE'))
+        # LC type C: karakter ke-7 (index 6) == 'C', atau HUB (is_2025 diabaikan untuk hub)
+        is_lc_c    = (len(lc_raw) >= 7 and lc_raw[6].upper() == 'C') or is_hub
 
         if lc_empty and not has_driver: continue
 
@@ -294,6 +300,14 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['dp']    += to_num(g(ci['dp']))
         monthly[m]['ujp']   += to_num(g(ci['ujp']))
         monthly[m]['ins']   += to_num(g(ci['ins']))
+
+        # LC type C aggregation
+        if is_lc_c:
+            monthly_c[m]['trips'] += 1
+            monthly_c[m]['do_']   += to_num(g(ci['do']))
+            monthly_c[m]['dp']    += to_num(g(ci['dp']))
+            monthly_c[m]['ujp']   += to_num(g(ci['ujp']))
+            monthly_c[m]['ins']   += to_num(g(ci['ins']))
 
         if not is_2025 and ci['area'] >= 0:
             area = str(g(ci['area'])).strip()
@@ -366,6 +380,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                 dp_ins_data[nik][m] += dp_ins_val
 
     sm[site] = {m: dict(v) for m, v in monthly.items()}
+    sm[site]['_lc_c'] = {m: dict(v) for m, v in monthly_c.items()}
 
     if not is_2025 and area_data:
         sm[site]['_areas'] = {a: {m: dict(v) for m,v in md.items()} for a,md in area_data.items()}
@@ -565,8 +580,10 @@ def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, las
         html
     )
 
-    html = replace_section(html, 'SITE_MONTHLY_2025', jd(sm25), 'SITE_MONTHLY')
-    html = replace_section(html, 'SITE_MONTHLY',      jd(sm26), 'ALL_MPP')
+    html = replace_section(html, 'SITE_MONTHLY_2025', jd(sm25), 'SITE_MONTHLY_2025_C')
+    html = replace_section(html, 'SITE_MONTHLY_2025_C', jd(sm25_c), 'SITE_MONTHLY')
+    html = replace_section(html, 'SITE_MONTHLY',      jd(sm26), 'SITE_MONTHLY_C')
+    html = replace_section(html, 'SITE_MONTHLY_C',    jd(sm26_c), 'ALL_MPP')
     html = replace_section(html, 'ALL_MPP',           jd(all_mpp), 'TOP_MPP')
     html = replace_section(html, 'TOP_MPP',           jd(top20),   'INSIGHT_DATA')
 
@@ -641,6 +658,21 @@ def main():
 
     compute_mpp_categories(sm26, mpp_raw)
     all_mpp, top20 = build_mpp_tables(mpp_raw, months)
+
+    # Build SITE_MONTHLY_C — extract _lc_c dari sm26 dan sm25
+    def build_lc_c(sm):
+        result = {}
+        for site, sdata in sm.items():
+            lc_c = sdata.get('_lc_c', {})
+            if lc_c:
+                result[site] = {m: dict(v) for m, v in lc_c.items()}
+            else:
+                result[site] = {}
+        return result
+
+    sm26_c = build_lc_c(sm26)
+    sm25_c = build_lc_c(sm25)
+    print(f'\n📊 LC-C sites: {[s for s,v in sm26_c.items() if v]}')
     insight = build_insight_data(sm26, sm25, SITES_26, months, partial_months)
 
     print('\n🔍 Verifikasi trip count:')

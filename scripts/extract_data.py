@@ -271,8 +271,10 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         lc_raw     = str(g(ci['lc'])).strip()
         lc_empty   = not lc_raw or lc_raw in ('','None','#N/A')
         has_driver = bool(drv and drv.upper() not in ('','NONE'))
-        # LC type C: karakter ke-7 (index 6) == 'C', atau HUB (is_2025 diabaikan untuk hub)
-        is_lc_c    = (len(lc_raw) >= 7 and lc_raw[6].upper() == 'C') or is_hub
+        # LC type C: karakter ke-7 (index 6) == 'C', atau HUB
+        # Kalau kolom LC NUM tidak ada (ci['lc']==-1, misal sheet 2025), NDC fallback = semua dianggap type C
+        lc_no_col  = ci['lc'] == -1
+        is_lc_c    = is_hub or lc_no_col or (len(lc_raw) >= 7 and lc_raw[6].upper() == 'C')
 
         if lc_empty and not has_driver: continue
 

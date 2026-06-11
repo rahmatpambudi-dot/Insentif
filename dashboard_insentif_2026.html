@@ -2081,6 +2081,9 @@ function renderInsight(){
   if(typeof renderInsightProd==='function')renderInsightProd();
   if(typeof renderDemandTable==='function')renderDemandTable();
   if(typeof buildYoYCharts==='function')setTimeout(()=>buildYoYCharts(sites),100);
+  // Update LC-C table kalau accordion sedang terbuka
+  var lccBody=document.getElementById('lccBody');
+  if(lccBody&&lccBody.classList.contains('open')&&typeof renderLCC==='function') renderLCC();
 }
 
 

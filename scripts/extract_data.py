@@ -555,7 +555,7 @@ def replace_section(html, const_name, new_js, next_const):
 def jd(obj):
     return json.dumps(obj, separators=(',',':'), ensure_ascii=False)
 
-def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date):
+def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=None, sm25_c=None):
     with open(HTML_PATH, 'r', encoding='utf-8') as f:
         html = f.read()
 
@@ -581,9 +581,9 @@ def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, las
     )
 
     html = replace_section(html, 'SITE_MONTHLY_2025', jd(sm25), 'SITE_MONTHLY_2025_C')
-    html = replace_section(html, 'SITE_MONTHLY_2025_C', jd(sm25_c), 'SITE_MONTHLY')
+    html = replace_section(html, 'SITE_MONTHLY_2025_C', jd(sm25_c or {}), 'SITE_MONTHLY')
     html = replace_section(html, 'SITE_MONTHLY',      jd(sm26), 'SITE_MONTHLY_C')
-    html = replace_section(html, 'SITE_MONTHLY_C',    jd(sm26_c), 'ALL_MPP')
+    html = replace_section(html, 'SITE_MONTHLY_C',    jd(sm26_c or {}), 'ALL_MPP')
     html = replace_section(html, 'ALL_MPP',           jd(all_mpp), 'TOP_MPP')
     html = replace_section(html, 'TOP_MPP',           jd(top20),   'INSIGHT_DATA')
 
@@ -681,7 +681,7 @@ def main():
     verify_new_fields(all_mpp, months)
 
     print('\n✏️  Updating HTML...')
-    update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date)
+    update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=sm26_c, sm25_c=sm25_c)
 
 if __name__ == '__main__':
     main()

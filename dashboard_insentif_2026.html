@@ -618,6 +618,9 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
             </div>
           </div>
         </div>
+            </div>
+          </div>
+        </div>
 
         <!-- LC-C Accordion -->
         <div class="lcc-accordion" id="lccAccordion">
@@ -2078,10 +2081,6 @@ function renderInsight(){
   if(typeof renderInsightProd==='function')renderInsightProd();
   if(typeof renderDemandTable==='function')renderDemandTable();
   if(typeof buildYoYCharts==='function')setTimeout(()=>buildYoYCharts(sites),100);
-  // Update LC-C table kalau accordion sedang terbuka
-  var lccBody=document.getElementById('lccBody');
-  var pgInsight=document.getElementById('pg-insight');
-  if(lccBody&&lccBody.classList.contains('open')&&typeof renderLCC==='function'&&pgInsight&&pgInsight.classList.contains('active')) renderLCC();
 }
 
 

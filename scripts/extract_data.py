@@ -548,8 +548,12 @@ def build_insight_data(sm26, sm25, sites_ndc, months, partial_months):
 def replace_section(html, const_name, new_js, next_const):
     start = html.find(f'const {const_name}=')
     end   = html.find(f'const {next_const}=')
-    if start == -1 or end == -1:
-        raise ValueError(f'Tidak ditemukan: {const_name} atau {next_const}')
+    if start == -1:
+        print(f'  [WARN] {const_name} tidak ditemukan di HTML — skip')
+        return html
+    if end == -1:
+        print(f'  [WARN] {next_const} tidak ditemukan di HTML — skip')
+        return html
     return html[:start] + f'const {const_name}={new_js};\n' + html[end:]
 
 def jd(obj):

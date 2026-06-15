@@ -76,6 +76,11 @@ DP_INS_COL_CANDIDATES = [
     'Dp_Insentif', 'DP_INSENTIF',
 ]
 
+# Nama kolom CBM di sheet
+CBM_COL_CANDIDATES = [
+    'CBM', 'cbm', 'Cbm', 'CBM (m3)', 'CBM(m3)', 'Cbm (m3)', 'Volume CBM',
+]
+
 
 # ── Auto-detect months ────────────────────────────────────────────────────────
 
@@ -201,7 +206,7 @@ def parse_tat_string(v):
     except: return None
 
 def empty_month():
-    return {'trips':0,'do_':0,'dp':0,'ujp':0,'ins':0,
+    return {'trips':0,'do_':0,'dp':0,'ujp':0,'ins':0,'cbm':0,
             'mpp_low':0,'mpp_mid':0,'mpp_high':0}
 
 
@@ -222,6 +227,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         'month'  : col_idx(headers, 'Month Rev'),
         'do'     : col_idx(headers, 'Jumlah_do'),
         'dp'     : col_idx(headers, 'jumlah_titik'),
+        'cbm'    : col_idx_multi(headers, CBM_COL_CANDIDATES),
         'ujp'    : col_idx(headers, 'UJP'),
         'ins'    : col_idx(headers, 'Insentif Ref'),
         'insmpp' : col_idx(headers, 'Insentif per MPP'),
@@ -242,7 +248,8 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
     # Log kolom baru
     tat_col_name  = headers[ci['tat']]  if ci['tat']  >= 0 else 'NOT FOUND'
     dp_ins_col_name = headers[ci['dp_ins']] if ci['dp_ins'] >= 0 else 'NOT FOUND'
-    print(f'  [COL] {site} — TAT: "{tat_col_name}" | DP_Insentif: "{dp_ins_col_name}"')
+    cbm_col_name = headers[ci['cbm']] if ci['cbm'] >= 0 else 'NOT FOUND'
+    print(f'  [COL] {site} — TAT: "{tat_col_name}" | DP_Insentif: "{dp_ins_col_name}" | CBM: "{cbm_col_name}"')
 
     monthly     = defaultdict(empty_month)
     monthly_c   = defaultdict(empty_month)  # LC type C only (NDC) / semua (HUB)
@@ -302,6 +309,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['dp']    += to_num(g(ci['dp']))
         monthly[m]['ujp']   += to_num(g(ci['ujp']))
         monthly[m]['ins']   += to_num(g(ci['ins']))
+        monthly[m]['cbm']   += to_num(g(ci['cbm']))
 
         # LC type C aggregation
         if is_lc_c:
@@ -310,6 +318,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
             monthly_c[m]['dp']    += to_num(g(ci['dp']))
             monthly_c[m]['ujp']   += to_num(g(ci['ujp']))
             monthly_c[m]['ins']   += to_num(g(ci['ins']))
+            monthly_c[m]['cbm']   += to_num(g(ci['cbm']))
 
         if not is_2025 and ci['area'] >= 0:
             area = str(g(ci['area'])).strip()
@@ -319,6 +328,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                 area_data[area][m]['dp']    += to_num(g(ci['dp']))
                 area_data[area][m]['ujp']   += to_num(g(ci['ujp']))
                 area_data[area][m]['ins']   += to_num(g(ci['ins']))
+                area_data[area][m]['cbm']   += to_num(g(ci['cbm']))
 
         if not is_2025 and partial_months:
             if m in partial_months:
@@ -329,6 +339,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                     period_partial[m]['dp']    += to_num(g(ci['dp']))
                     period_partial[m]['ujp']   += to_num(g(ci['ujp']))
                     period_partial[m]['ins']   += to_num(g(ci['ins']))
+                    period_partial[m]['cbm']   += to_num(g(ci['cbm']))
             MONTH_ORDER_LOCAL = MONTH_ORDER[:]
             for partial_m, cutoff in partial_months.items():
                 idx = MONTH_ORDER_LOCAL.index(partial_m) if partial_m in MONTH_ORDER_LOCAL else -1
@@ -340,6 +351,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                         mom_period_partial[m]['dp']    += to_num(g(ci['dp']))
                         mom_period_partial[m]['ujp']   += to_num(g(ci['ujp']))
                         mom_period_partial[m]['ins']   += to_num(g(ci['ins']))
+                        mom_period_partial[m]['cbm']   += to_num(g(ci['cbm']))
 
         if is_2025 and partial_months and m in partial_months:
             cutoff = partial_months[m]
@@ -349,6 +361,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                 yoy_partial[m]['dp']    += to_num(g(ci['dp']))
                 yoy_partial[m]['ujp']   += to_num(g(ci['ujp']))
                 yoy_partial[m]['ins']   += to_num(g(ci['ins']))
+                yoy_partial[m]['cbm']   += to_num(g(ci['cbm']))
 
         if is_dummy or lc_empty: continue
         ins_mpp = to_num(g(ci['insmpp']))
@@ -504,7 +517,7 @@ def build_mpp_tables(mpp_raw, months):
 
 def build_insight_data(sm26, sm25, sites_ndc, months, partial_months):
     def agg(sm, month, sites, key=None):
-        r = {'trips':0,'do_':0,'dp':0,'ujp':0,'ins':0}
+        r = {'trips':0,'do_':0,'dp':0,'ujp':0,'ins':0,'cbm':0}
         for sk in sites:
             d = sm.get(sk,{}).get(month,{})
             if key and isinstance(d.get(key), dict): d = d[key]
@@ -519,6 +532,7 @@ def build_insight_data(sm26, sm25, sites_ndc, months, partial_months):
             'DO/Trip':round(d['do_']/t,2),'DP/Trip':round(d['dp']/t,2),
             'UJP/Trip':round(d['ujp']/t),'UJP/DO':round(d['ujp']/do_),
             'UJP/DP':round(d['ujp']/dp_),'DO/DP':round(d['do_']/dp_,2),
+            'CBM':d['cbm'],'CBM/DP':round(d['cbm']/dp_,2),
         }
 
     ALL_SITES = list(sm26.keys())

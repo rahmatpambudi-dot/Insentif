@@ -631,10 +631,12 @@ const PERIOD_CONFIG={partial_months:["June"],cutoff:{"June":13}};
 const INSIGHT_METRICS=[
   {key:'DO',      label:'Total Delivery Order (DO)',  icon:'📦', higherBetter:true,  weight:0, neutral:true},
   {key:'DP',      label:'Total Drop Point (DP)',      icon:'📍', higherBetter:true,  weight:0, neutral:true},
+  {key:'CBM',     label:'Total CBM',                  icon:'🧊', higherBetter:true,  weight:0, neutral:true},
   {key:'Trip',    label:'Total Trip',                 icon:'🚚', higherBetter:false, weight:0.5, neutral:true},
   {key:'DO/Trip', label:'Produktivitas DO/Trip',      icon:'📈', higherBetter:true,  weight:0.5},
   {key:'DP/Trip', label:'Produktivitas DP/Trip',      icon:'📊', higherBetter:true,  weight:3},
   {key:'DO/DP',   label:'Produktivitas DO/DP',        icon:'📦', higherBetter:true,  weight:0.5},
+  {key:'CBM/DP',  label:'Produktivitas CBM/DP',       icon:'📐', higherBetter:true,  weight:2},
   {key:'UJP/Trip',label:'Biaya UJP/Trip',             icon:'💰', higherBetter:false, weight:2},
   {key:'UJP/DO',  label:'Biaya UJP/DO',               icon:'⚖️',  higherBetter:false, weight:1},
   {key:'UJP/DP',  label:'Biaya UJP/DP',               icon:'🎯', higherBetter:false, weight:1},
@@ -645,7 +647,8 @@ const INSIGHT_METRICS=[
 function _fmtInsight(v, key){
   if(!key)return v;
   if(['DO','DP','Trip'].includes(key))return Math.round(v).toLocaleString('id-ID');
-  if(['DO/Trip','DP/Trip','DO/DP'].includes(key))return typeof v==='number'?v.toFixed(2):v;
+  if(key==='CBM')return (typeof v==='number'?v:0).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})+' m³';
+  if(['DO/Trip','DP/Trip','DO/DP','CBM/DP'].includes(key))return typeof v==='number'?v.toFixed(2):v;
   if(['UJP/Trip','UJP/DO','UJP/DP'].includes(key))return 'Rp '+Math.round(v).toLocaleString('id-ID');
   if(['Insentif','UJP'].includes(key)){
     const abs=Math.abs(v);const sign=v<0?'-':'';
@@ -1887,7 +1890,7 @@ function renderInsight(){
     June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
   // aggSites with apple-to-apple period support
   function aggSites(sm,months,sl,periodKeys){
-    const r={trips:0,do_:0,dp:0,ujp:0,ins:0};
+    const r={trips:0,do_:0,dp:0,ujp:0,ins:0,cbm:0};
     sl.forEach(sk=>{months.forEach((mo,idx)=>{
       let d=sm[sk]?.[mo]||{};
       const pk=periodKeys?periodKeys[idx]:null;
@@ -1896,7 +1899,7 @@ function renderInsight(){
     });});
     return r;
   }
-  function toMetrics(d){const t=d.trips||1,do_=d.do_||1,dp_=d.dp||1;return{DO:d.do_,DP:d.dp,Trip:d.trips,UJP:d.ujp,Insentif:d.ins,'DO/Trip':+(d.do_/t).toFixed(2),'DP/Trip':+(d.dp/t).toFixed(2),'UJP/Trip':Math.round(d.ujp/t),'UJP/DO':Math.round(d.ujp/do_),'UJP/DP':Math.round(d.ujp/dp_),'DO/DP':+(d.do_/dp_).toFixed(2)};}
+  function toMetrics(d){const t=d.trips||1,do_=d.do_||1,dp_=d.dp||1;return{DO:d.do_,DP:d.dp,Trip:d.trips,UJP:d.ujp,Insentif:d.ins,'DO/Trip':+(d.do_/t).toFixed(2),'DP/Trip':+(d.dp/t).toFixed(2),'UJP/Trip':Math.round(d.ujp/t),'UJP/DO':Math.round(d.ujp/do_),'UJP/DP':Math.round(d.ujp/dp_),'DO/DP':+(d.do_/dp_).toFixed(2),CBM:d.cbm,'CBM/DP':+(d.cbm/dp_).toFixed(2)};}
   // Detect filter context
   const _ms=document.getElementById('monthSel');
   const _mv=_ms?_ms.value:'all';

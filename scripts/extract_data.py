@@ -253,6 +253,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
 
     monthly     = defaultdict(empty_month)
     monthly_c   = defaultdict(empty_month)  # LC type C only (NDC) / semua (HUB)
+    daily       = defaultdict(empty_month)  # {YYYY-MM-DD: {...}} — khusus 2026, untuk date-range filter
     yoy_partial = defaultdict(empty_month)
     period_partial     = defaultdict(empty_month)
     mom_period_partial = defaultdict(empty_month)
@@ -287,11 +288,14 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
 
         # Parse tanggal
         row_day = None
+        row_date_iso = None
         if ci['date'] >= 0:
             raw_date = str(g(ci['date'])).strip()
             for fmt in DATE_FMTS:
                 try:
-                    row_day = datetime.strptime(raw_date, fmt).day
+                    _d = datetime.strptime(raw_date, fmt)
+                    row_day = _d.day
+                    row_date_iso = _d.date().isoformat()
                     break
                 except: pass
             if row_day is None:
@@ -302,6 +306,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                         excel_epoch = _date(1899, 12, 30)
                         d = _date.fromordinal(excel_epoch.toordinal() + serial)
                         row_day = d.day
+                        row_date_iso = d.isoformat()
                 except: pass
 
         monthly[m]['trips'] += 1
@@ -310,6 +315,14 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['ujp']   += to_num(g(ci['ujp']))
         monthly[m]['ins']   += to_num(g(ci['ins']))
         monthly[m]['cbm']   += to_num(g(ci['cbm']))
+
+        if not is_2025 and row_date_iso:
+            daily[row_date_iso]['trips'] += 1
+            daily[row_date_iso]['do_']   += to_num(g(ci['do']))
+            daily[row_date_iso]['dp']    += to_num(g(ci['dp']))
+            daily[row_date_iso]['ujp']   += to_num(g(ci['ujp']))
+            daily[row_date_iso]['ins']   += to_num(g(ci['ins']))
+            daily[row_date_iso]['cbm']   += to_num(g(ci['cbm']))
 
         # LC type C aggregation
         if is_lc_c:
@@ -396,6 +409,9 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
 
     sm[site] = {m: dict(v) for m, v in monthly.items()}
     sm[site]['_lc_c'] = {m: dict(v) for m, v in monthly_c.items()}
+
+    if not is_2025 and daily:
+        sm[site]['_daily'] = {d: dict(v) for d, v in daily.items()}
 
     if not is_2025 and area_data:
         sm[site]['_areas'] = {a: {m: dict(v) for m,v in md.items()} for a,md in area_data.items()}
@@ -575,7 +591,7 @@ def replace_section(html, const_name, new_js, next_const):
 def jd(obj):
     return json.dumps(obj, separators=(',',':'), ensure_ascii=False)
 
-def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=None, sm25_c=None):
+def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=None, sm25_c=None, daily_all=None):
     with open(HTML_PATH, 'r', encoding='utf-8') as f:
         html = f.read()
 
@@ -600,9 +616,13 @@ def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, las
         html
     )
 
+    html = replace_section(html, 'DAILY', jd(daily_all or {}), 'SITE_MONTHLY_2025')
+
+    sm26_clean = {s: {k: v for k, v in d.items() if k != '_daily'} for s, d in sm26.items()}
+
     html = replace_section(html, 'SITE_MONTHLY_2025', jd(sm25), 'SITE_MONTHLY_2025_C')
     html = replace_section(html, 'SITE_MONTHLY_2025_C', jd(sm25_c or {}), 'SITE_MONTHLY')
-    html = replace_section(html, 'SITE_MONTHLY',      jd(sm26), 'SITE_MONTHLY_C')
+    html = replace_section(html, 'SITE_MONTHLY',      jd(sm26_clean), 'SITE_MONTHLY_C')
     html = replace_section(html, 'SITE_MONTHLY_C',    jd(sm26_c or {}), 'ALL_MPP')
     html = replace_section(html, 'ALL_MPP',           jd(all_mpp), 'TOP_MPP')
     html = replace_section(html, 'TOP_MPP',           jd(top20),   'INSIGHT_DATA')
@@ -695,13 +715,22 @@ def main():
     print(f'\n📊 LC-C sites: {[s for s,v in sm26_c.items() if v]}')
     insight = build_insight_data(sm26, sm25, SITES_26, months, partial_months)
 
+    # Build DAILY — extract _daily dari sm26 (untuk date-range filter di tab Insight)
+    daily_all = {}
+    for site, sdata in sm26.items():
+        d = sdata.get('_daily', {})
+        if d:
+            daily_all[site] = {dt: dict(v) for dt, v in d.items()}
+    n_dates = sum(len(v) for v in daily_all.values())
+    print(f'\n📅 DAILY: {len(daily_all)} sites, {n_dates} site-date entries total')
+
     print('\n🔍 Verifikasi trip count:')
     verify(sm26)
 
     verify_new_fields(all_mpp, months)
 
     print('\n✏️  Updating HTML...')
-    update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=sm26_c, sm25_c=sm25_c)
+    update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=sm26_c, sm25_c=sm25_c, daily_all=daily_all)
 
 if __name__ == '__main__':
     main()

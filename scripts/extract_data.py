@@ -316,7 +316,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['ins']   += to_num(g(ci['ins']))
         monthly[m]['cbm']   += to_num(g(ci['cbm']))
 
-        if not is_2025 and row_date_iso:
+        if row_date_iso:
             daily[row_date_iso]['trips'] += 1
             daily[row_date_iso]['do_']   += to_num(g(ci['do']))
             daily[row_date_iso]['dp']    += to_num(g(ci['dp']))
@@ -410,7 +410,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
     sm[site] = {m: dict(v) for m, v in monthly.items()}
     sm[site]['_lc_c'] = {m: dict(v) for m, v in monthly_c.items()}
 
-    if not is_2025 and daily:
+    if daily:
         sm[site]['_daily'] = {d: dict(v) for d, v in daily.items()}
 
     if not is_2025 and area_data:
@@ -591,7 +591,7 @@ def replace_section(html, const_name, new_js, next_const):
 def jd(obj):
     return json.dumps(obj, separators=(',',':'), ensure_ascii=False)
 
-def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=None, sm25_c=None, daily_all=None):
+def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=None, sm25_c=None, daily_all=None, daily_all_25=None):
     with open(HTML_PATH, 'r', encoding='utf-8') as f:
         html = f.read()
 
@@ -616,11 +616,13 @@ def update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, las
         html
     )
 
-    html = replace_section(html, 'DAILY', jd(daily_all or {}), 'SITE_MONTHLY_2025')
+    html = replace_section(html, 'DAILY', jd(daily_all or {}), 'DAILY_2025')
+    html = replace_section(html, 'DAILY_2025', jd(daily_all_25 or {}), 'SITE_MONTHLY_2025')
 
     sm26_clean = {s: {k: v for k, v in d.items() if k != '_daily'} for s, d in sm26.items()}
+    sm25_clean = {s: {k: v for k, v in d.items() if k != '_daily'} for s, d in sm25.items()}
 
-    html = replace_section(html, 'SITE_MONTHLY_2025', jd(sm25), 'SITE_MONTHLY_2025_C')
+    html = replace_section(html, 'SITE_MONTHLY_2025', jd(sm25_clean), 'SITE_MONTHLY_2025_C')
     html = replace_section(html, 'SITE_MONTHLY_2025_C', jd(sm25_c or {}), 'SITE_MONTHLY')
     html = replace_section(html, 'SITE_MONTHLY',      jd(sm26_clean), 'SITE_MONTHLY_C')
     html = replace_section(html, 'SITE_MONTHLY_C',    jd(sm26_c or {}), 'ALL_MPP')
@@ -716,13 +718,20 @@ def main():
     insight = build_insight_data(sm26, sm25, SITES_26, months, partial_months)
 
     # Build DAILY — extract _daily dari sm26 (untuk date-range filter di tab Insight)
-    daily_all = {}
-    for site, sdata in sm26.items():
-        d = sdata.get('_daily', {})
-        if d:
-            daily_all[site] = {dt: dict(v) for dt, v in d.items()}
-    n_dates = sum(len(v) for v in daily_all.values())
-    print(f'\n📅 DAILY: {len(daily_all)} sites, {n_dates} site-date entries total')
+    def build_daily(sm):
+        result = {}
+        for site, sdata in sm.items():
+            d = sdata.get('_daily', {})
+            if d:
+                result[site] = {dt: dict(v) for dt, v in d.items()}
+        return result
+
+    daily_all    = build_daily(sm26)
+    daily_all_25 = build_daily(sm25)
+    n_dates    = sum(len(v) for v in daily_all.values())
+    n_dates_25 = sum(len(v) for v in daily_all_25.values())
+    print(f'\n📅 DAILY 2026: {len(daily_all)} sites, {n_dates} site-date entries total')
+    print(f'📅 DAILY 2025: {len(daily_all_25)} sites, {n_dates_25} site-date entries total')
 
     print('\n🔍 Verifikasi trip count:')
     verify(sm26)
@@ -730,7 +739,7 @@ def main():
     verify_new_fields(all_mpp, months)
 
     print('\n✏️  Updating HTML...')
-    update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=sm26_c, sm25_c=sm25_c, daily_all=daily_all)
+    update_html(sm26, sm25, all_mpp, top20, insight, months, partial_months, last_data_date, sm26_c=sm26_c, sm25_c=sm25_c, daily_all=daily_all, daily_all_25=daily_all_25)
 
 if __name__ == '__main__':
     main()

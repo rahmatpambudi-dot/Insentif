@@ -1644,26 +1644,60 @@ function renderInsightProd(){
 function buildYoYCharts(sites){
   const MNAME_S={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',
     June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
-  // Dynamic: ikut filter bulan aktif, YTD sampai bulan terpilih
+  const MONTH_NUM={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',
+    July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
+  const MONTH_ORDER_ALL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
   const _ms=document.getElementById('monthSel');
   const _mv=_ms?_ms.value:'all';
   let MONTHS_ALL;
   if(VIEW==='range'){
-    MONTHS_ALL=MONTHS.slice(); // range mode: tampil semua bulan sebagai context
+    // Hanya tampilkan bulan yang ada dalam range
+    const fromMonth=RANGE_FROM.slice(0,7); // YYYY-MM
+    const toMonth=RANGE_TO.slice(0,7);
+    MONTHS_ALL=MONTHS.filter(m=>{
+      const mn=RANGE_FROM.slice(0,4)+'-'+MONTH_NUM[m];
+      return mn>=fromMonth&&mn<=toMonth;
+    });
+    if(!MONTHS_ALL.length) MONTHS_ALL=MONTHS.slice();
   } else if(_mv==='all'||!_mv){
     MONTHS_ALL=MONTHS.slice();
   } else if(typeof MONTH_GROUPS!=='undefined'&&MONTH_GROUPS[_mv]){
     MONTHS_ALL=MONTH_GROUPS[_mv].filter(m=>MONTHS.includes(m));
   } else {
-    // Single bulan → tampil YTD dari Jan sampai bulan tersebut
     const idx=MONTHS.indexOf(_mv);
     MONTHS_ALL=idx>=0?MONTHS.slice(0,idx+1):[_mv];
   }
   const MLB=MONTHS_ALL.map(m=>MNAME_S[m]||m);
+
   function agg(sm,m,sl){const r={trips:0,do_:0,dp:0,ujp:0,ins:0};sl.forEach(sk=>{const d=sm[sk]?.[m]||{};for(const k in r)r[k]+=d[k]||0;});return r;}
 
-  const d26=MONTHS_ALL.map(m=>agg(SITE_MONTHLY,m,sites));
-  const d25=MONTHS_ALL.map(m=>agg(SITE_MONTHLY_2025,m,sites));
+  function aggDailyMonth(src,m,sl,yr){
+    // Aggregate semua tanggal dalam bulan m dari src (DAILY atau DAILY_2025)
+    const mn=yr+'-'+MONTH_NUM[m];
+    const r={trips:0,do_:0,dp:0,ujp:0,ins:0};
+    // Kalau range filter aktif, batasi ke dalam range
+    const fromDt=VIEW==='range'&&RANGE_FROM.slice(0,7)===mn?RANGE_FROM:mn+'-01';
+    const toDt=VIEW==='range'&&RANGE_TO.slice(0,7)===mn?RANGE_TO:mn+'-31';
+    sl.forEach(sk=>{
+      const sd=src[sk];if(!sd)return;
+      for(const dt in sd){
+        if(dt>=fromDt&&dt<=toDt){const d=sd[dt];r.trips+=d.trips||0;r.do_+=d.do_||0;r.dp+=d.dp||0;r.ujp+=d.ujp||0;r.ins+=d.ins||0;}
+      }
+    });
+    return r;
+  }
+
+  let d26,d25;
+  if(VIEW==='range'){
+    const yr26=RANGE_FROM.slice(0,4);
+    const yr25=String(parseInt(yr26)-1);
+    d26=MONTHS_ALL.map(m=>aggDailyMonth(DAILY,m,sites,yr26));
+    d25=MONTHS_ALL.map(m=>aggDailyMonth(DAILY_2025,m,sites,yr25));
+  } else {
+    d26=MONTHS_ALL.map(m=>agg(SITE_MONTHLY,m,sites));
+    d25=MONTHS_ALL.map(m=>agg(SITE_MONTHLY_2025,m,sites));
+  }
 
   function getOrCreate(id){
     const canvas=document.getElementById(id);if(!canvas)return null;

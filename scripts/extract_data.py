@@ -301,7 +301,14 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         lc_no_col  = ci['lc'] == -1
         is_lc_c    = is_hub or lc_no_col or (len(lc_raw) >= 7 and lc_raw[6].upper() == 'C')
 
-        if lc_empty and not has_driver: continue
+        if lc_empty and not has_driver:
+            if m == 'June' and site in ('JBBK','CKP','SDA'):
+                _skip_reason = f'lc_empty={lc_empty} has_driver={has_driver} lc_raw={lc_raw!r} drv={drv!r}'
+                if not hasattr(extract_sheet, '_skip_log'): extract_sheet._skip_log = []
+                if len(extract_sheet._skip_log) < 5: extract_sheet._skip_log.append(f'{site}:{_skip_reason}')
+                if not hasattr(extract_sheet, '_skip_count'): extract_sheet._skip_count = {}
+                extract_sheet._skip_count[site] = extract_sheet._skip_count.get(site,0) + 1
+            continue
 
         # Parse tanggal
         row_day = None
@@ -423,6 +430,13 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
             # DP_Insentif: akumulasi per driver per bulan (2026 only)
             if not is_2025 and dp_ins_val > 0:
                 dp_ins_data[nik][m] += dp_ins_val
+
+    if hasattr(extract_sheet, '_skip_count') and site in ('JBBK','CKP','SDA'):
+        print(f'  [SKIP] {site} Juni skip_count={extract_sheet._skip_count.get(site,0)}')
+        for _s in getattr(extract_sheet, '_skip_log', []):
+            if _s.startswith(site): print(f'    {_s}')
+        extract_sheet._skip_count[site] = 0
+        extract_sheet._skip_log = []
 
     sm[site] = {m: dict(v) for m, v in monthly.items()}
     sm[site]['_lc_c'] = {m: dict(v) for m, v in monthly_c.items()}

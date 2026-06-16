@@ -1652,12 +1652,11 @@ function buildYoYCharts(sites){
   const _mv=_ms?_ms.value:'all';
   let MONTHS_ALL;
   if(VIEW==='range'){
-    // Hanya tampilkan bulan yang ada dalam range
-    const fromMonth=RANGE_FROM.slice(0,7); // YYYY-MM
-    const toMonth=RANGE_TO.slice(0,7);
+    // Tampil semua bulan dari Jan sampai bulan terakhir dalam range (YTD style)
+    const toMonth=RANGE_TO.slice(0,7); // YYYY-MM
     MONTHS_ALL=MONTHS.filter(m=>{
-      const mn=RANGE_FROM.slice(0,4)+'-'+MONTH_NUM[m];
-      return mn>=fromMonth&&mn<=toMonth;
+      const mn=RANGE_TO.slice(0,4)+'-'+MONTH_NUM[m];
+      return mn<=toMonth;
     });
     if(!MONTHS_ALL.length) MONTHS_ALL=MONTHS.slice();
   } else if(_mv==='all'||!_mv){

@@ -275,6 +275,11 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
       <div class="tg">
         <button class="tgb active" onclick="setView('fm',this)">Full Month</button>
         <button class="tgb" onclick="setView('mtd',this)">MTD</button>
+        <span style="color:#7a94b0;font-size:11px;margin:0 2px">|</span>
+        <input type="date" id="rangeFrom" style="font-size:11px;padding:4px 6px;border:1px solid #c2d0e5;border-radius:5px;color:#1a2e45;background:#f0f5fb" onchange="syncRangeBtn()">
+        <span style="font-size:11px;color:#7a94b0">—</span>
+        <input type="date" id="rangeTo" style="font-size:11px;padding:4px 6px;border:1px solid #c2d0e5;border-radius:5px;color:#1a2e45;background:#f0f5fb" onchange="syncRangeBtn()">
+        <button class="tgb" id="btnRange" onclick="applyRange(this)">Terapkan</button>
       </div>
       <select id="monthSel" onchange="renderAll();setTimeout(()=>{if(_map)_renderMap();},100)">
         <option value="all">Semua Bulan</option>
@@ -442,7 +447,7 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
     </div>
     <!-- INSIGHT -->
     <div id="pg-insight" class="page">
-      <div style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <div id="insightLocalRange" style="margin-bottom:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <div style="font-size:11px;color:#7a94b0;font-weight:600">Filter Range Tanggal:</div>
         <input type="date" id="insight-from" onchange="renderInsight()" style="font-size:12px;padding:4px 8px;border:1px solid #dde3ec;border-radius:6px;color:#1a2e45">
         <span style="font-size:11px;color:#7a94b0">—</span>
@@ -695,6 +700,7 @@ const SC={'JBBK':'#1e6fb5','CKP':'#2889d8','SDA':'#5aaff0','Hub Bogor':'#22c55e'
 const PG_TITLES={'overview':'Overview','produktivitas':'Produktivitas','area':'Per Area','topmpp':'Top MPP','distribusi':'Distribusi MPP','insight':'Insight'};
 
 let VIEW='fm', SITE='all', CURRENT_PAGE='overview', DIST_CAT='all', DIST_PAGE=1;
+let RANGE_FROM='', RANGE_TO='';
 const PS=20, CR={};
 
 // Clock
@@ -712,11 +718,11 @@ const MONTH_GROUPS={
   S2:['July','August','September','October','November','December'],
 };
 function getMonths(){
+  if(VIEW==='range') return MONTHS; // range mode: agg() akan pakai DAILY, MONTHS cuma fallback
   if(VIEW==='mtd') return ['May'];
   const ms=document.getElementById('monthSel').value;
   if(ms==='all') return MONTHS;
   if(MONTH_GROUPS[ms]){
-    // Hanya bulan yang ada di data (apple-to-apple — skip bulan yang belum ada)
     return MONTH_GROUPS[ms].filter(m=>MONTHS.includes(m));
   }
   return [ms];
@@ -727,7 +733,19 @@ function getMonthGroupLabel(){
   return labels[ms]||ms;
 }
 function getSites(){if(SITE==='all')return AK;if(SITE==='ndc')return NK;if(SITE==='hub')return HK;return[SITE];}
+function aggDaily(sl,from,to,src){
+  src=src||DAILY;
+  const r={trips:0,do_:0,dp:0,ujp:0,ins:0,cbm:0,ml:0,mm:0,mh:0};
+  sl.forEach(sk=>{
+    const sd=src[sk];if(!sd)return;
+    for(const dt in sd){
+      if(dt>=from&&dt<=to){const d=sd[dt];r.trips+=d.trips||0;r.do_+=d.do_||0;r.dp+=d.dp||0;r.ujp+=d.ujp||0;r.ins+=d.ins||0;r.cbm+=d.cbm||0;}
+    }
+  });
+  return r;
+}
 function agg(sites,months){
+  if(VIEW==='range'&&RANGE_FROM&&RANGE_TO) return aggDaily(sites,RANGE_FROM,RANGE_TO,DAILY);
   let trips=0,do_=0,dp=0,ujp=0,ins=0,ml=0,mm=0,mh=0;
   const usePartial=VIEW==='mtd';
   sites.forEach(s=>months.forEach(m=>{
@@ -794,20 +812,40 @@ function setSite(s,btn){
   if(CURRENT_PAGE==='insight')setTimeout(renderInsight,50);
 }
 
+function syncRangeBtn(){
+  const f=document.getElementById('rangeFrom').value;
+  const t=document.getElementById('rangeTo').value;
+  const btn=document.getElementById('btnRange');
+  if(btn) btn.style.opacity=(f&&t&&f<=t)?'1':'0.4';
+}
+function applyRange(btn){
+  const f=document.getElementById('rangeFrom').value;
+  const t=document.getElementById('rangeTo').value;
+  if(!f||!t||f>t) return;
+  RANGE_FROM=f; RANGE_TO=t;
+  VIEW='range'; DIST_PAGE=1;
+  document.querySelectorAll('.tgb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const sel=document.getElementById('monthSel');
+  if(sel){sel.disabled=true;sel.style.opacity='0.4';}
+  const upd=document.getElementById('updChip');
+  if(upd) upd.textContent=f+' – '+t;
+  renderAll();
+  setTimeout(()=>{if(_map&&CURRENT_PAGE==='overview')_renderMap();},100);
+}
 function setView(v,btn){
   VIEW=v;DIST_PAGE=1;
   document.querySelectorAll('.tgb').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   const upd=document.getElementById('updChip');
   const sel=document.getElementById('monthSel');
+  sel.disabled=false; sel.style.opacity='1';
   if(v==='mtd'){
     sel.value='May';
     sel.disabled=true;
     sel.style.opacity='0.5';
     if(upd)upd.textContent='MTD s/d 13 Jun 2026';
   } else {
-    sel.disabled=false;
-    sel.style.opacity='1';
     if(upd)upd.textContent='Update: 13 Jun 2026';
   }
   renderAll();
@@ -1136,15 +1174,17 @@ function buildCharts(){
 }
 
 function renderAll(){
-  if(typeof renderInsight==="function"&&document.getElementById('pg-insight')?.classList.contains('active')){
+  if(typeof renderInsight==="function"&&(VIEW==='range'||document.getElementById('pg-insight')?.classList.contains('active'))){
     const ms=document.getElementById('monthSel');const mv=ms?ms.value:'all';
-    if(mv&&mv!=='all'&&!MONTH_GROUPS[mv]){
-      _insightMonth=mv;
-    } else if(mv&&MONTH_GROUPS[mv]){
-      const grpMonths=MONTH_GROUPS[mv].filter(m=>MONTHS.includes(m));
-      _insightMonth=grpMonths.length?grpMonths[grpMonths.length-1]:MONTHS[MONTHS.length-1];
-    } else {
-      _insightMonth=MONTHS[MONTHS.length-1]; // all = bulan terakhir (utk single month fallback)
+    if(VIEW!=='range'){
+      if(mv&&mv!=='all'&&!MONTH_GROUPS[mv]){
+        _insightMonth=mv;
+      } else if(mv&&MONTH_GROUPS[mv]){
+        const grpMonths=MONTH_GROUPS[mv].filter(m=>MONTHS.includes(m));
+        _insightMonth=grpMonths.length?grpMonths[grpMonths.length-1]:MONTHS[MONTHS.length-1];
+      } else {
+        _insightMonth=MONTHS[MONTHS.length-1];
+      }
     }
     setTimeout(renderInsight,80);
   }
@@ -1608,7 +1648,9 @@ function buildYoYCharts(sites){
   const _ms=document.getElementById('monthSel');
   const _mv=_ms?_ms.value:'all';
   let MONTHS_ALL;
-  if(_mv==='all'||!_mv){
+  if(VIEW==='range'){
+    MONTHS_ALL=MONTHS.slice(); // range mode: tampil semua bulan sebagai context
+  } else if(_mv==='all'||!_mv){
     MONTHS_ALL=MONTHS.slice();
   } else if(typeof MONTH_GROUPS!=='undefined'&&MONTH_GROUPS[_mv]){
     MONTHS_ALL=MONTH_GROUPS[_mv].filter(m=>MONTHS.includes(m));
@@ -1895,6 +1937,9 @@ function renderDemandTable(){
 
 function renderInsight(){
   const sites=getSites();
+  // Sembunyikan/tampilkan local date picker berdasarkan VIEW
+  const localRange=document.getElementById('insightLocalRange');
+  if(localRange) localRange.style.display=VIEW==='range'?'none':'flex';
   const MNAME={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',
     June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
   // aggSites with apple-to-apple period support
@@ -1919,9 +1964,9 @@ function renderInsight(){
   const GRP_LABEL_SHORT={Q1:'Q1',Q2:'Q2',Q3:'Q3',Q4:'Q4',S1:'Sem 1',S2:'Sem 2'};
   const GRP_PREV_LABEL={Q1:'Q4 25',Q2:'Q1 26',Q3:'Q2 26',Q4:'Q3 26',S1:'S2 25',S2:'S1 26'};
   let v26,v25,vp,curLabel,prevLabel,yoyLabel,titleLabel,subtitleText,momSubText,yoySubText;
-  // Date-range filter (tab Insight) — pakai data harian DAILY
-  const drFrom=document.getElementById('insight-from')?.value;
-  const drTo=document.getElementById('insight-to')?.value;
+  // Date-range filter: pakai global RANGE jika VIEW==='range', atau local insight-from/to
+  const drFrom=VIEW==='range'?RANGE_FROM:(document.getElementById('insight-from')?.value||'');
+  const drTo=VIEW==='range'?RANGE_TO:(document.getElementById('insight-to')?.value||'');
   const isDateRange=!!(drFrom&&drTo&&drFrom<=drTo);
   function aggDaily(sl,from,to,src){
     src=src||DAILY;

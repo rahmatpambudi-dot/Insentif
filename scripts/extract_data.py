@@ -247,7 +247,10 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
 
     # Log kolom baru
     tat_col_name  = headers[ci['tat']]  if ci['tat']  >= 0 else 'NOT FOUND'
-    dp_ins_col_name = headers[ci['dp_ins']] if ci['dp_ins'] >= 0 else 'NOT FOUND'
+    print(f'\n  [HEADERS] {site}: {headers}')
+    print(f'  [CI] ins={ci["ins"]} insmpp={ci["insmpp"]} lc={ci["lc"]} driver={ci["driver"]}')
+    # Sample 3 baris pertama Juni
+    _sample = 0
     cbm_col_name = headers[ci['cbm']] if ci['cbm'] >= 0 else 'NOT FOUND'
     print(f'  [COL] {site} — TAT: "{tat_col_name}" | DP_Insentif: "{dp_ins_col_name}" | CBM: "{cbm_col_name}"')
 
@@ -315,6 +318,10 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['ujp']   += to_num(g(ci['ujp']))
         monthly[m]['ins']   += to_num(g(ci['ins']))
         monthly[m]['cbm']   += to_num(g(ci['cbm']))
+
+        if site in ('JBBK','CKP','SDA') and m == 'June' and _sample < 3:
+            print(f'  [SAMPLE] {site} {m}: lc={str(g(ci["lc"]))!r} drv={str(g(ci["driver"]))!r} ins_ref={str(g(ci["ins"]))!r} ins_mpp={str(g(ci["insmpp"]))!r}')
+            _sample += 1
 
         if row_date_iso:
             daily[row_date_iso]['trips'] += 1

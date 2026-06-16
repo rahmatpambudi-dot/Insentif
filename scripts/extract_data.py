@@ -56,6 +56,22 @@ MONTH_ORDER = [
     'July','August','September','October','November','December'
 ]
 
+# Normalisasi variasi nama bulan → nama standar MONTH_ORDER
+# Handles: Jan, Jun, Juli, Agustus, dst
+MONTH_NORMALIZE = {}
+for _m in MONTH_ORDER:
+    MONTH_NORMALIZE[_m.lower()] = _m          # january → January
+    MONTH_NORMALIZE[_m[:3].lower()] = _m      # jan → January
+# Tambahan bahasa Indonesia
+for _id, _en in [
+    ('januari','January'),('februari','February'),('maret','March'),
+    ('april','April'),('mei','May'),('juni','June'),
+    ('juli','July'),('agustus','August'),('september','September'),
+    ('oktober','October'),('november','November'),('desember','December'),
+    ('agt','August'),('agu','August'),('okt','October'),('des','December'),
+]:
+    MONTH_NORMALIZE[_id] = _en
+
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets.readonly',
     'https://www.googleapis.com/auth/drive.readonly',
@@ -111,7 +127,8 @@ def detect_months_and_partial(wb, sites):
                         ci_date = i
 
             for row in all_rows[1:]:
-                m = row[ci_month].strip() if ci_month >= 0 and ci_month < len(row) else ''
+                raw_m = row[ci_month].strip() if ci_month >= 0 and ci_month < len(row) else ''
+                m = MONTH_NORMALIZE.get(raw_m.lower(), raw_m)
                 if m in MONTH_ORDER:
                     month_set.add(m)
                     if ci_date >= 0 and ci_date < len(row):
@@ -247,10 +264,6 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
 
     # Log kolom baru
     tat_col_name  = headers[ci['tat']]  if ci['tat']  >= 0 else 'NOT FOUND'
-    print(f'\n  [HEADERS] {site}: {headers}')
-    print(f'  [CI] ins={ci["ins"]} insmpp={ci["insmpp"]} lc={ci["lc"]} driver={ci["driver"]}')
-    # Sample 3 baris pertama Juni
-    _sample = 0
     cbm_col_name = headers[ci['cbm']] if ci['cbm'] >= 0 else 'NOT FOUND'
     print(f'  [COL] {site} — TAT: "{tat_col_name}" | DP_Insentif: "{dp_ins_col_name}" | CBM: "{cbm_col_name}"')
 
@@ -274,7 +287,8 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
     for row in all_rows[1:]:
         def g(c): return row[c] if 0 <= c < len(row) else ''
 
-        m = str(g(ci['month'])).strip()
+        raw_m = str(g(ci['month'])).strip()
+        m = MONTH_NORMALIZE.get(raw_m.lower(), raw_m)
         if m not in months: continue
 
         drv        = str(g(ci['driver'])).strip()
@@ -318,11 +332,6 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['ujp']   += to_num(g(ci['ujp']))
         monthly[m]['ins']   += to_num(g(ci['ins']))
         monthly[m]['cbm']   += to_num(g(ci['cbm']))
-
-        if site in ('JBBK','CKP','SDA') and m == 'June' and _sample < 3:
-            _lc=str(g(ci['lc'])); _drv=str(g(ci['driver'])); _ir=str(g(ci['ins'])); _im=str(g(ci['insmpp']))
-            print(f'  [SAMPLE] {site} {m}: lc={_lc!r} drv={_drv!r} ins_ref={_ir!r} ins_mpp={_im!r}')
-            _sample += 1
 
         if row_date_iso:
             daily[row_date_iso]['trips'] += 1

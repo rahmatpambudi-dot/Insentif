@@ -274,7 +274,6 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
     <div class="chips">
       <div class="tg">
         <button class="tgb active" onclick="setView('fm',this)">Full Month</button>
-        <button class="tgb" onclick="setView('mtd',this)">MTD</button>
         <span style="color:#7a94b0;font-size:11px;margin:0 2px">|</span>
         <input type="date" id="rangeFrom" style="font-size:11px;padding:4px 6px;border:1px solid #c2d0e5;border-radius:5px;color:#1a2e45;background:#f0f5fb" onchange="syncRangeBtn()">
         <span style="font-size:11px;color:#7a94b0">—</span>
@@ -719,7 +718,6 @@ const MONTH_GROUPS={
 };
 function getMonths(){
   if(VIEW==='range') return MONTHS; // range mode: agg() akan pakai DAILY, MONTHS cuma fallback
-  if(VIEW==='mtd') return ['May'];
   const ms=document.getElementById('monthSel').value;
   if(ms==='all') return MONTHS;
   if(MONTH_GROUPS[ms]){
@@ -818,6 +816,15 @@ function syncRangeBtn(){
   const btn=document.getElementById('btnRange');
   if(btn) btn.style.opacity=(f&&t&&f<=t)?'1':'0.4';
 }
+function _setRangeMax(){
+  // Ambil tanggal terbaru dari DAILY
+  let maxDt='';
+  for(const site in DAILY){for(const dt in DAILY[site]){if(dt>maxDt)maxDt=dt;}}
+  if(maxDt){
+    document.getElementById('rangeFrom').max=maxDt;
+    document.getElementById('rangeTo').max=maxDt;
+  }
+}
 function applyRange(btn){
   const f=document.getElementById('rangeFrom').value;
   const t=document.getElementById('rangeTo').value;
@@ -840,14 +847,7 @@ function setView(v,btn){
   const upd=document.getElementById('updChip');
   const sel=document.getElementById('monthSel');
   sel.disabled=false; sel.style.opacity='1';
-  if(v==='mtd'){
-    sel.value='May';
-    sel.disabled=true;
-    sel.style.opacity='0.5';
-    if(upd)upd.textContent='MTD s/d 13 Jun 2026';
-  } else {
-    if(upd)upd.textContent='Update: 13 Jun 2026';
-  }
+  if(upd)upd.textContent='Update: 13 Jun 2026';
   renderAll();
   setTimeout(()=>{if(_map&&CURRENT_PAGE==='overview')_renderMap();},100);
 }
@@ -2290,6 +2290,8 @@ Chart.register(ChartDataLabels);
 // Init: ensure FM starts with all months
 document.getElementById('monthSel').value='all';
 document.getElementById('monthSel').value='all';
+_setRangeMax();
+syncRangeBtn();
 renderAll();
 setTimeout(()=>{
   if(typeof L!=='undefined'){_initMap();}

@@ -1675,9 +1675,11 @@ function buildYoYCharts(sites){
     // Aggregate semua tanggal dalam bulan m dari src (DAILY atau DAILY_2025)
     const mn=yr+'-'+MONTH_NUM[m];
     const r={trips:0,do_:0,dp:0,ujp:0,ins:0};
-    // Kalau range filter aktif, batasi ke dalam range
-    const fromDt=VIEW==='range'&&RANGE_FROM.slice(0,7)===mn?RANGE_FROM:mn+'-01';
-    const toDt=VIEW==='range'&&RANGE_TO.slice(0,7)===mn?RANGE_TO:mn+'-31';
+    // Semua bulan dipotong sesuai hari range (apple-to-apple)
+    const fromDay=RANGE_FROM.slice(8,10); // DD dari range start
+    const toDay=RANGE_TO.slice(8,10);     // DD dari range end
+    const fromDt=mn+'-'+fromDay;
+    const toDt=mn+'-'+toDay;
     sl.forEach(sk=>{
       const sd=src[sk];if(!sd)return;
       for(const dt in sd){

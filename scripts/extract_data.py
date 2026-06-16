@@ -56,21 +56,22 @@ MONTH_ORDER = [
     'July','August','September','October','November','December'
 ]
 
-# Normalisasi variasi nama bulan → nama standar MONTH_ORDER
-# Handles: Jan, Jun, Juli, Agustus, dst
-MONTH_NORMALIZE = {}
-for _m in MONTH_ORDER:
-    MONTH_NORMALIZE[_m.lower()] = _m          # january → January
-    MONTH_NORMALIZE[_m[:3].lower()] = _m      # jan → January
-# Tambahan bahasa Indonesia
-for _id, _en in [
-    ('januari','January'),('februari','February'),('maret','March'),
-    ('april','April'),('mei','May'),('juni','June'),
-    ('juli','July'),('agustus','August'),('september','September'),
-    ('oktober','October'),('november','November'),('desember','December'),
-    ('agt','August'),('agu','August'),('okt','October'),('des','December'),
-]:
-    MONTH_NORMALIZE[_id] = _en
+
+def normalize_month(raw):
+    """Normalize variasi nama bulan ke standar English (January, dst)."""
+    _map = {
+        'january':'January','february':'February','march':'March','april':'April',
+        'may':'May','june':'June','july':'July','august':'August',
+        'september':'September','october':'October','november':'November','december':'December',
+        'jan':'January','feb':'February','mar':'March','apr':'April',
+        'jun':'June','jul':'July','aug':'August','sep':'September','oct':'October',
+        'nov':'November','dec':'December',
+        'januari':'January','februari':'February','maret':'March','mei':'May',
+        'juni':'June','juli':'July','agustus':'August','september':'September',
+        'oktober':'October','november':'November','desember':'December',
+        'agt':'August','agu':'August','okt':'October','des':'December',
+    }
+    return _map.get(str(raw).strip().lower(), str(raw).strip())
 
 SCOPES = [
     'https://www.googleapis.com/auth/spreadsheets.readonly',
@@ -127,8 +128,7 @@ def detect_months_and_partial(wb, sites):
                         ci_date = i
 
             for row in all_rows[1:]:
-                raw_m = row[ci_month].strip() if ci_month >= 0 and ci_month < len(row) else ''
-                m = MONTH_NORMALIZE.get(raw_m.lower(), raw_m)
+                m = normalize_month(row[ci_month] if ci_month >= 0 and ci_month < len(row) else '')
                 if m in MONTH_ORDER:
                     month_set.add(m)
                     if ci_date >= 0 and ci_date < len(row):
@@ -264,6 +264,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
 
     # Log kolom baru
     tat_col_name  = headers[ci['tat']]  if ci['tat']  >= 0 else 'NOT FOUND'
+    dp_ins_col_name = headers[ci['dp_ins']] if ci['dp_ins'] >= 0 else 'NOT FOUND'
     cbm_col_name = headers[ci['cbm']] if ci['cbm'] >= 0 else 'NOT FOUND'
     print(f'  [COL] {site} — TAT: "{tat_col_name}" | DP_Insentif: "{dp_ins_col_name}" | CBM: "{cbm_col_name}"')
 
@@ -287,8 +288,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
     for row in all_rows[1:]:
         def g(c): return row[c] if 0 <= c < len(row) else ''
 
-        raw_m = str(g(ci['month'])).strip()
-        m = MONTH_NORMALIZE.get(raw_m.lower(), raw_m)
+        m = normalize_month(g(ci['month']))
         if m not in months: continue
 
         drv        = str(g(ci['driver'])).strip()

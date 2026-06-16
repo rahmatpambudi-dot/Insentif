@@ -320,7 +320,8 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         monthly[m]['cbm']   += to_num(g(ci['cbm']))
 
         if site in ('JBBK','CKP','SDA') and m == 'June' and _sample < 3:
-            print(f'  [SAMPLE] {site} {m}: lc={str(g(ci["lc"]))!r} drv={str(g(ci["driver"]))!r} ins_ref={str(g(ci["ins"]))!r} ins_mpp={str(g(ci["insmpp"]))!r}')
+            _lc=str(g(ci['lc'])); _drv=str(g(ci['driver'])); _ir=str(g(ci['ins'])); _im=str(g(ci['insmpp']))
+            print(f'  [SAMPLE] {site} {m}: lc={_lc!r} drv={_drv!r} ins_ref={_ir!r} ins_mpp={_im!r}')
             _sample += 1
 
         if row_date_iso:

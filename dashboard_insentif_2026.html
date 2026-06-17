@@ -1372,8 +1372,20 @@ function _drawMap(){
 let _map=null, _markers={}, _svg=null, _labelDivs=[];
 
 function getMapStats(){
-  const months=getMonths();
   const stats={};
+  if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
+    Object.keys(SITE_MONTHLY).forEach(sk=>{
+      const r=aggDaily([sk],RANGE_FROM,RANGE_TO,DAILY);
+      const {trips,do_,dp,ujp,ins}=r;
+      stats[sk]={trips,do_,dp,ujp,ins,ml:0,mm:0,mh:0,
+        do_trip:trips?+(do_/trips).toFixed(2):0,
+        dp_trip:trips?+(dp/trips).toFixed(2):0,
+        ujp_trip:trips?Math.round(ujp/trips):0,
+        ujp_do:do_?Math.round(ujp/do_):0};
+    });
+    return stats;
+  }
+  const months=getMonths();
   Object.keys(SITE_MONTHLY).forEach(sk=>{
     let trips=0,do_=0,dp=0,ujp=0,ins=0,ml=0,mm=0,mh=0;
     months.forEach(m=>{

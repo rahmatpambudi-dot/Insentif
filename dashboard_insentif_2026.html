@@ -1160,12 +1160,21 @@ function buildCharts(){
   mc('doTrendChart',{type:'line',data:{labels:MLBL,datasets:sites.slice(0,6).map(s=>{return{label:SD[s]||s,data:MONTHS.map(m=>{const d=SITE_MONTHLY[s]?.[m];return d&&d.trips?+(d.do_/d.trips).toFixed(1):null;}),borderColor:SC[s]||'#023188',borderWidth:2,pointRadius:4,tension:.3,spanGaps:true,datalabels:{anchor:'top',align:'top',formatter:v=>v!=null?v.toFixed(1):'',font:{size:8},color:SC[s]||'#023188',display:true}}})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true}},scales:{x:{ticks:{...to,autoSkip:false},grid:{display:false}},y:{ticks:to,grid:go}}}});
   mc('ujpTrendChart',{type:'line',data:{labels:MLBL,datasets:sites.slice(0,6).map(s=>{return{label:SD[s]||s,data:MONTHS.map(m=>{const d=SITE_MONTHLY[s]?.[m];return d&&d.trips?Math.round(d.ujp/d.trips/1000):null;}),borderColor:SC[s]||'#023188',borderWidth:2,pointRadius:4,tension:.3,spanGaps:true,datalabels:{anchor:'top',align:'top',formatter:v=>v!=null?v+'K':'',font:{size:8},color:SC[s]||'#023188',display:true}}})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true}},scales:{x:{ticks:{...to,autoSkip:false},grid:{display:false}},y:{ticks:{...to,callback:v=>v+'K'},grid:go}}}});
 
-  // Distribusi cat stacked — ikut filter bulan aktif
-  const catMonths=months;
+  // Distribusi cat stacked — selalu Jan-Jun, data per bulan ikut filter aktif
+  const catMonths=MONTHS;
   const catLabels=catMonths.map(m=>MLBL[MONTHS.indexOf(m)]);
-  const catHighD=catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_high||0});return v;});
-  const catMidD=catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_mid||0});return v;});
-  const catLowD=catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_low||0});return v;});
+  const M2K_c={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+  let catHighD,catMidD,catLowD;
+  if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
+    // Range mode: hitung mh/mm/ml dari ALL_MPP per bulan (full bulan, approximasi)
+    catHighD=catMonths.map(m=>{let v=0;ALL_MPP.forEach(r=>{if(!sites.includes(r.site))return;const ins=r[M2K_c[m]]||0;if(ins>1500000)v++;});return v;});
+    catMidD =catMonths.map(m=>{let v=0;ALL_MPP.forEach(r=>{if(!sites.includes(r.site))return;const ins=r[M2K_c[m]]||0;if(ins>=500000&&ins<=1500000)v++;});return v;});
+    catLowD =catMonths.map(m=>{let v=0;ALL_MPP.forEach(r=>{if(!sites.includes(r.site))return;const ins=r[M2K_c[m]]||0;if(ins>0&&ins<500000)v++;});return v;});
+  } else {
+    catHighD=catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_high||0});return v;});
+    catMidD =catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_mid||0});return v;});
+    catLowD =catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_low||0});return v;});
+  }
   mc('catChart',{type:'bar',data:{labels:catLabels,datasets:[
     {label:'High',data:catHighD,backgroundColor:'#ef444499',borderRadius:2},
     {label:'Mid',data:catMidD,backgroundColor:'#f59c1a99'},

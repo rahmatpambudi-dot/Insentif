@@ -692,7 +692,7 @@ function setInsightMonth(m,btn){
   renderInsight();
 }
 
-const MLBL=['Jan','Feb','Mar','Apr','May'];
+const MLBL=['Jan','Feb','Mar','Apr','May','Jun'];
 const MNAME={January:'Januari',February:'Februari',March:'Maret',April:'April',May:'Mei'};
 const SD={'JBBK':'Jababeka','CKP':'Cikupa','SDA':'Sidoarjo','Hub Bogor':'Hub Bogor','Hub Tangerang':'Hub Tangerang','Hub Utara':'Hub Utara','Hub Bandung':'Hub Bandung','Hub Yogya':'Hub Yogya','Hub Semarang':'Hub Semarang','Hub Lampung':'Hub Lampung','Hub Palembang':'Hub Palembang','Hub Kediri':'Hub Kediri'};
 const SC={'JBBK':'#1e6fb5','CKP':'#2889d8','SDA':'#5aaff0','Hub Bogor':'#22c55e','Hub Tangerang':'#16a34a','Hub Utara':'#0891b2','Hub Bandung':'#0d9488','Hub Yogya':'#7c3aed','Hub Semarang':'#db2777','Hub Lampung':'#ea580c','Hub Palembang':'#9333ea','Hub Kediri':'#9f1239'};
@@ -1160,11 +1160,13 @@ function buildCharts(){
   mc('doTrendChart',{type:'line',data:{labels:MLBL,datasets:sites.slice(0,6).map(s=>{return{label:SD[s]||s,data:MONTHS.map(m=>{const d=SITE_MONTHLY[s]?.[m];return d&&d.trips?+(d.do_/d.trips).toFixed(1):null;}),borderColor:SC[s]||'#023188',borderWidth:2,pointRadius:4,tension:.3,spanGaps:true,datalabels:{anchor:'top',align:'top',formatter:v=>v!=null?v.toFixed(1):'',font:{size:8},color:SC[s]||'#023188',display:true}}})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true}},scales:{x:{ticks:{...to,autoSkip:false},grid:{display:false}},y:{ticks:to,grid:go}}}});
   mc('ujpTrendChart',{type:'line',data:{labels:MLBL,datasets:sites.slice(0,6).map(s=>{return{label:SD[s]||s,data:MONTHS.map(m=>{const d=SITE_MONTHLY[s]?.[m];return d&&d.trips?Math.round(d.ujp/d.trips/1000):null;}),borderColor:SC[s]||'#023188',borderWidth:2,pointRadius:4,tension:.3,spanGaps:true,datalabels:{anchor:'top',align:'top',formatter:v=>v!=null?v+'K':'',font:{size:8},color:SC[s]||'#023188',display:true}}})},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},datalabels:{display:true}},scales:{x:{ticks:{...to,autoSkip:false},grid:{display:false}},y:{ticks:{...to,callback:v=>v+'K'},grid:go}}}});
 
-  // Distribusi cat stacked — selalu Jan-Apr (trend)
-  const catHighD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_high||0});return v;});
-  const catMidD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_mid||0});return v;});
-  const catLowD=MONTHS.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_low||0});return v;});
-  mc('catChart',{type:'bar',data:{labels:MLBL,datasets:[
+  // Distribusi cat stacked — ikut filter bulan aktif
+  const catMonths=months;
+  const catLabels=catMonths.map(m=>MLBL[MONTHS.indexOf(m)]);
+  const catHighD=catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_high||0});return v;});
+  const catMidD=catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_mid||0});return v;});
+  const catLowD=catMonths.map(m=>{let v=0;sites.forEach(s=>{v+=SITE_MONTHLY[s]?.[m]?.mpp_low||0});return v;});
+  mc('catChart',{type:'bar',data:{labels:catLabels,datasets:[
     {label:'High',data:catHighD,backgroundColor:'#ef444499',borderRadius:2},
     {label:'Mid',data:catMidD,backgroundColor:'#f59c1a99'},
     {label:'Low',data:catLowD,backgroundColor:'#22c55e99',

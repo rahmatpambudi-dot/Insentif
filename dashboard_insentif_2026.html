@@ -1018,10 +1018,21 @@ function renderDistTable(){
     June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
 
   // Build per-driver per-month rows from ALL_MPP
+  // If range mode, only show months that overlap with RANGE_FROM–RANGE_TO
+  let activeMonths=months;
+  if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
+    const MONTH_NUM2={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
+    const yr=RANGE_FROM.slice(0,4);
+    activeMonths=months.filter(m=>{
+      const mn=yr+'-'+(MONTH_NUM2[m]||'01');
+      const mEnd=yr+'-'+(MONTH_NUM2[m]||'01')+'-31';
+      return mn<=RANGE_TO.slice(0,7) && RANGE_FROM.slice(0,7)<=mn.slice(0,7);
+    });
+  }
   const rows=[];
   ALL_MPP.forEach(r=>{
     if(!sites.includes(r.site)) return;
-    months.forEach(m=>{
+    activeMonths.forEach(m=>{
       const mk=M2K[m]||m.slice(0,3).toLowerCase();
       const ins=r[mk]||0;
       if(ins<=0) return;
@@ -1095,7 +1106,8 @@ function renderDistTable(){
   const pp=[];for(let p=Math.max(1,DIST_PAGE-2);p<=Math.min(tp,DIST_PAGE+2);p++)pp.push(p);
   document.getElementById('distPB').innerHTML=(DIST_PAGE>1?`<button class="pbtn" onclick="gDistPage(${DIST_PAGE-1})">‹</button>`:'')+pp.map(p=>`<button class="pbtn ${p===DIST_PAGE?'on':''}" onclick="gDistPage(${p})">${p}</button>`).join('')+(DIST_PAGE<tp?`<button class="pbtn" onclick="gDistPage(${DIST_PAGE+1})">›</button>`:'');
   const sn={'all':'Semua Site','ndc':'NDC','hub':'Hub'}[SITE]||(SD[SITE]||SITE);
-  document.getElementById('distFltLbl').textContent=`Filter aktif: ${sn} · ${getMonthGroupLabel()==='Semua Bulan'?months.map(m=>MLBL[MONTHS.indexOf(m)]).join(', '):getMonthGroupLabel()}${DIST_CAT!=='all'?' · '+DIST_CAT:''}`;
+  const distMonthLbl=VIEW==='range'&&RANGE_FROM&&RANGE_TO?`${RANGE_FROM} – ${RANGE_TO}`:getMonthGroupLabel()==='Semua Bulan'?months.map(m=>MLBL[MONTHS.indexOf(m)]).join(', '):getMonthGroupLabel();
+  document.getElementById('distFltLbl').textContent=`Filter aktif: ${sn} · ${distMonthLbl}${DIST_CAT!=='all'?' · '+DIST_CAT:''}`;
 }
 function gDistPage(p){DIST_PAGE=p;renderDistTable();}
 

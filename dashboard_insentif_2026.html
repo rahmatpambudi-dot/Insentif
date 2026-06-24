@@ -873,7 +873,20 @@ function renderKPI(id,cc){
 }
 
 function renderKPIDist(){
-  const sites=getSites(),months=getMonths(),d=agg(sites,months);
+  const sites=getSites(),months=getMonths();
+  let d;
+  if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
+    // Hitung mh/mm/ml dari ALL_MPP per activeMonths (sama dgn renderDistTable)
+    const MONTH_NUM2={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
+    const yr=RANGE_FROM.slice(0,4);
+    const activeMonths=months.filter(m=>{const mn=yr+'-'+(MONTH_NUM2[m]||'01');return mn<=RANGE_TO.slice(0,7)&&RANGE_FROM.slice(0,7)<=mn;});
+    const M2Kd={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+    let mh=0,mm=0,ml=0;
+    ALL_MPP.forEach(r=>{if(!sites.includes(r.site))return;activeMonths.forEach(m=>{const mk=M2Kd[m]||m.slice(0,3).toLowerCase();const ins=r[mk]||0;if(ins<=0)return;if(ins>1500000)mh++;else if(ins>=500000)mm++;else ml++;});});
+    d={...aggDaily(sites,RANGE_FROM,RANGE_TO,DAILY),mh,mm,ml};
+  } else {
+    d=agg(sites,months);
+  }
   document.getElementById('kpi-dist').innerHTML=[
     {l:'High >1.5M',v:d.mh,c:'k-r',s:'MPP'},
     {l:'Mid 500K–1.5M',v:d.mm,c:'k-a',s:'MPP'},
@@ -977,10 +990,16 @@ function renderStatBadges(){
   const M2K={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
     June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
   // kumpulkan semua nilai insentif driver sesuai filter aktif
+  let statActiveMonths=months;
+  if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
+    const MONTH_NUM4={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
+    const yr4=RANGE_FROM.slice(0,4);
+    statActiveMonths=months.filter(m=>{const mn=yr4+'-'+(MONTH_NUM4[m]||'01');return mn<=RANGE_TO.slice(0,7)&&RANGE_FROM.slice(0,7)<=mn;});
+  }
   const vals=[];
   ALL_MPP.forEach(r=>{
     if(!sites.includes(r.site))return;
-    months.forEach(m=>{
+    statActiveMonths.forEach(m=>{
       const mk=M2K[m]||m.slice(0,3).toLowerCase();
       const ins=r[mk]||0;
       if(ins<=0)return;
@@ -1161,10 +1180,16 @@ function buildCharts(){
   // Dist histogram — rebuild rows dari ALL_MPP dengan struktur baru
   const M2K_h={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
     June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+  let histActiveMonths=months;
+  if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
+    const MONTH_NUM3={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
+    const yr3=RANGE_FROM.slice(0,4);
+    histActiveMonths=months.filter(m=>{const mn=yr3+'-'+(MONTH_NUM3[m]||'01');return mn<=RANGE_TO.slice(0,7)&&RANGE_FROM.slice(0,7)<=mn;});
+  }
   const histRows=[];
   ALL_MPP.forEach(r=>{
     if(!sites.includes(r.site)) return;
-    months.forEach(m=>{
+    histActiveMonths.forEach(m=>{
       const mk=M2K_h[m]||m.slice(0,3).toLowerCase();
       const ins=r[mk]||0;
       if(ins>0) histRows.push(ins);

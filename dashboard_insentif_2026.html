@@ -693,7 +693,7 @@ function setInsightMonth(m,btn){
 }
 
 const MLBL=['Jan','Feb','Mar','Apr','May','Jun'];
-const MNAME={January:'Januari',February:'Februari',March:'Maret',April:'April',May:'Mei'};
+const MNAME={January:'Januari',February:'Februari',March:'Maret',April:'April',May:'Mei',June:'Juni',July:'Juli',August:'Agustus',September:'September',October:'Oktober',November:'November',December:'Desember'};
 const SD={'JBBK':'Jababeka','CKP':'Cikupa','SDA':'Sidoarjo','Hub Bogor':'Hub Bogor','Hub Tangerang':'Hub Tangerang','Hub Utara':'Hub Utara','Hub Bandung':'Hub Bandung','Hub Yogya':'Hub Yogya','Hub Semarang':'Hub Semarang','Hub Lampung':'Hub Lampung','Hub Palembang':'Hub Palembang','Hub Kediri':'Hub Kediri'};
 const SC={'JBBK':'#1e6fb5','CKP':'#2889d8','SDA':'#5aaff0','Hub Bogor':'#22c55e','Hub Tangerang':'#16a34a','Hub Utara':'#0891b2','Hub Bandung':'#0d9488','Hub Yogya':'#7c3aed','Hub Semarang':'#db2777','Hub Lampung':'#ea580c','Hub Palembang':'#9333ea','Hub Kediri':'#9f1239'};
 const PG_TITLES={'overview':'Overview','produktivitas':'Produktivitas','area':'Per Area','topmpp':'Top MPP','distribusi':'Distribusi MPP','insight':'Insight'};
@@ -1873,7 +1873,7 @@ function setDemandView(v, btn){
 function renderDemandTable(){
   const sites  = getSites();
   const months = MONTHS; // Per Bulan selalu tampil semua bulan
-  const MLBL4  = {January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei'};
+  const MLBL4  = {January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
   const cap    = document.getElementById('demandCaption');
   const thead  = document.getElementById('demandThead');
   const tbody  = document.getElementById('demandBody');
@@ -1905,7 +1905,7 @@ function renderDemandTable(){
 
   if(_demandView === 'monthly'){
     // Rows = bulan, cols = DO | Trip | DP | DO/Trip | DP/Trip | DO/DP + MoM + YoY
-    const lastMo=MONTHS[MONTHS.length-1];const MLBL_SHORT={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei'};
+    const lastMo=MONTHS[MONTHS.length-1];const MLBL_SHORT={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
     if(cap) cap.textContent = `${sites.length} site · Jan–${MLBL_SHORT[lastMo]} 2026 vs 2025`;
     thead.innerHTML = `<tr>
       <th>Bulan</th>

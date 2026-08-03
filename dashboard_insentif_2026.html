@@ -678,13 +678,19 @@ function _insightBadge(pct, higherBetter, neutral){
   if(pct===0||Math.abs(pct)<0.05) return{cls:'badge-neutral',text:'STABIL'};
   if(neutral) return pct>0?{cls:'badge-neutral',text:'NAIK'}:{cls:'badge-neutral',text:'TURUN'};
   const good=higherBetter?pct>0:pct<0;
-  return good?{cls:'badge-good',text:'MEMBAIK'}:{cls:'badge-bad',text:'MENURUN'};
+  if(good) return{cls:'badge-good',text:'MEMBAIK'};
+  return{cls:'badge-bad',text:pct>0?'NAIK':'MENURUN'};
 }
 
 function _pctArrow(pct){
   if(pct>0)return'<span style="color:#15803d;font-size:14px">▲</span>';
   if(pct<0)return'<span style="color:#dc2626;font-size:14px">▼</span>';
   return'<span style="color:#94a3b8;font-size:14px">→</span>';
+}
+function _pctArrowGood(pct,isGood){
+  const shape=pct>0?'▲':(pct<0?'▼':'→');
+  const color=pct===0?'#94a3b8':(isGood?'#15803d':'#dc2626');
+  return`<span style="color:${color};font-size:14px">${shape}</span>`;
 }
 
 function setInsightMonth(m,btn){
@@ -2169,7 +2175,7 @@ function renderInsight(){
       const badge=_insightBadge(pct,met.higherBetter,met.neutral);const isGood=met.neutral?(pct>0):(met.higherBetter?pct>0:pct<0);
       const w=met.weight||1;
       if(badge.cls==='badge-good')good+=w;else if(badge.cls==='badge-bad')bad+=w;
-      const arrow=_pctArrow(isGood?Math.abs(pct):-Math.abs(pct));const pctColor=isGood?'#15803d':pct!==0?'#dc2626':'#94a3b8';
+      const arrow=_pctArrowGood(pct,isGood);const pctColor=isGood?'#15803d':pct!==0?'#dc2626':'#94a3b8';
       return`<div class="ins-row"><div class="ins-icon" style="background:${met.neutral?'#f1f5f9':isGood?'#f0fdf4':'#fff5f5'}">${met.icon}</div><div class="ins-label">${met.label}</div><div class="ins-mom">${arrow}<span class="ins-pct" style="color:${pctColor}">${(pct>0?'+':'')+pct.toFixed(1)}%</span><span class="ins-badge ${badge.cls}">${badge.text}</span></div></div>`;
     }).join('');
     const conc=document.getElementById(concId);if(!conc)return;

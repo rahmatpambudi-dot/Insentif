@@ -182,6 +182,8 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
 .ins-mom{display:flex;align-items:center;gap:6px;min-width:140px}
 .ins-pct{font-size:13px;font-weight:700}
 .ins-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.ins-values{font-size:10px;color:#64748b;margin-top:2px;font-weight:400}
+.ins-values b{color:#1a2e45;font-weight:700}
 .badge-good{background:#dcfce7;color:#15803d}
 .badge-warn{background:#fef9c3;color:#a16207}
 .badge-bad{background:#fee2e2;color:#dc2626}
@@ -455,6 +457,21 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
         <input type="date" id="insight-to" onchange="renderInsight()" style="font-size:12px;padding:4px 8px;border:1px solid #dde3ec;border-radius:6px;color:#1a2e45">
         <button onclick="document.getElementById('insight-from').value='';document.getElementById('insight-to').value='';renderInsight()" style="font-size:11px;padding:4px 10px;border:1px solid #dde3ec;border-radius:6px;background:#f0f5fb;cursor:pointer;color:#1a2e45">Reset</button>
       </div>
+      <div id="insightDayFilterRow" style="margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="font-size:11px;color:#7a94b0;font-weight:600">Filter Hari:</div>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1a2e45;cursor:pointer;background:#f0f5fb;padding:3px 8px;border-radius:6px;border:1px solid #dde3ec">
+          <input type="checkbox" id="insightDayAll" checked onchange="setInsightDayAll(this)" style="cursor:pointer">Semua Hari
+        </label>
+        <span style="font-size:11px;color:#dde3ec">|</span>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1a2e45;cursor:pointer"><input type="checkbox" class="insight-day-cb" checked value="1" onchange="toggleInsightDay(1,this)" style="cursor:pointer">Sen</label>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1a2e45;cursor:pointer"><input type="checkbox" class="insight-day-cb" checked value="2" onchange="toggleInsightDay(2,this)" style="cursor:pointer">Sel</label>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1a2e45;cursor:pointer"><input type="checkbox" class="insight-day-cb" checked value="3" onchange="toggleInsightDay(3,this)" style="cursor:pointer">Rab</label>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1a2e45;cursor:pointer"><input type="checkbox" class="insight-day-cb" checked value="4" onchange="toggleInsightDay(4,this)" style="cursor:pointer">Kam</label>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1a2e45;cursor:pointer"><input type="checkbox" class="insight-day-cb" checked value="5" onchange="toggleInsightDay(5,this)" style="cursor:pointer">Jum</label>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1a2e45;cursor:pointer"><input type="checkbox" class="insight-day-cb" checked value="6" onchange="toggleInsightDay(6,this)" style="cursor:pointer">Sab</label>
+        <label style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1a2e45;cursor:pointer"><input type="checkbox" class="insight-day-cb" checked value="0" onchange="toggleInsightDay(0,this)" style="cursor:pointer">Min</label>
+        <span style="font-size:10px;color:#94a3b8;font-style:italic">*hanya berlaku saat pakai Range Tanggal</span>
+      </div>
       <div style="margin-bottom:10px">
         <div style="font-size:11px;color:#7a94b0" id="insightSubtitle"></div>
       </div>
@@ -607,6 +624,7 @@ tr.total-row td{background:#f0f5fb;font-weight:600;border-top:2px solid #c2d0e5}
                   <span class="hd-title">&#x1F504; Rotasi MPP &mdash; Jalur High Demand</span>
                   <span class="hd-sub" id="hdSub"></span>
                 </div>
+                <div style="font-size:10px;color:#94a3b8;font-style:italic;margin:-4px 0 6px">*data agregat bulanan, tidak terpengaruh Filter Hari</div>
                 <div class="hd-pct-bar">
                   <span class="hd-pct-label">% Insentif Top 5 Jalur vs Total</span>
                   <div class="hd-pct-track"><div class="hd-pct-fill" id="hdPctFill" style="width:0%"></div></div>
@@ -699,6 +717,18 @@ function setInsightMonth(m,btn){
   if(btn)btn.classList.add('active');
   renderInsight();
 }
+function toggleInsightDay(day,cb){
+  if(cb.checked){ if(!INSIGHT_DAY_FILTER.includes(day)) INSIGHT_DAY_FILTER.push(day); }
+  else { INSIGHT_DAY_FILTER=INSIGHT_DAY_FILTER.filter(d=>d!==day); }
+  const allCb=document.getElementById('insightDayAll');
+  if(allCb)allCb.checked=(INSIGHT_DAY_FILTER.length===7);
+  renderInsight();
+}
+function setInsightDayAll(cb){
+  INSIGHT_DAY_FILTER=cb.checked?[0,1,2,3,4,5,6]:[];
+  document.querySelectorAll('.insight-day-cb').forEach(c=>c.checked=cb.checked);
+  renderInsight();
+}
 
 const MLBL=['Jan','Feb','Mar','Apr','May','Jun','Jul','Agu'];
 const MNAME={January:'Januari',February:'Februari',March:'Maret',April:'April',May:'Mei',June:'Juni',July:'Juli',August:'Agustus',September:'September',October:'Oktober',November:'November',December:'Desember'};
@@ -708,6 +738,7 @@ const PG_TITLES={'overview':'Overview','produktivitas':'Produktivitas','area':'P
 
 let VIEW='fm', SITE='all', CURRENT_PAGE='overview', DIST_CAT='all', DIST_PAGE=1;
 let RANGE_FROM='', RANGE_TO='';
+let INSIGHT_DAY_FILTER=[0,1,2,3,4,5,6]; // 0=Minggu..6=Sabtu, default semua hari
 const PS=20, CR={};
 
 // Clock
@@ -1748,10 +1779,17 @@ function buildYoYCharts(sites){
     const toDay=RANGE_TO.slice(8,10);     // DD dari range end
     const fromDt=mn+'-'+fromDay;
     const toDt=mn+'-'+toDay;
+    const dayFilterActive=INSIGHT_DAY_FILTER.length<7;
     sl.forEach(sk=>{
       const sd=src[sk];if(!sd)return;
       for(const dt in sd){
-        if(dt>=fromDt&&dt<=toDt){const d=sd[dt];r.trips+=d.trips||0;r.do_+=d.do_||0;r.dp+=d.dp||0;r.ujp+=d.ujp||0;r.ins+=d.ins||0;}
+        if(dt>=fromDt&&dt<=toDt){
+          if(dayFilterActive){
+            const dow=new Date(dt+'T00:00:00Z').getUTCDay();
+            if(!INSIGHT_DAY_FILTER.includes(dow))continue;
+          }
+          const d=sd[dt];r.trips+=d.trips||0;r.do_+=d.do_||0;r.dp+=d.dp||0;r.ujp+=d.ujp||0;r.ins+=d.ins||0;
+        }
       }
     });
     return r;
@@ -2074,10 +2112,17 @@ function renderInsight(){
   function aggDaily(sl,from,to,src){
     src=src||DAILY;
     const r={trips:0,do_:0,dp:0,ujp:0,ins:0,cbm:0};
+    const dayFilterActive=INSIGHT_DAY_FILTER.length<7;
     sl.forEach(sk=>{
       const sd=src[sk];if(!sd)return;
       for(const dt in sd){
-        if(dt>=from&&dt<=to){const d=sd[dt];for(const k in r)r[k]+=d[k]||0;}
+        if(dt>=from&&dt<=to){
+          if(dayFilterActive){
+            const dow=new Date(dt+'T00:00:00Z').getUTCDay();
+            if(!INSIGHT_DAY_FILTER.includes(dow))continue;
+          }
+          const d=sd[dt];for(const k in r)r[k]+=d[k]||0;
+        }
       }
     });
     return r;
@@ -2169,14 +2214,16 @@ function renderInsight(){
     const yoyPctCell=(yoyPct>0?'+':'')+yoyPct.toFixed(1)+'%';
     return`<tr><td style="color:#94a3b8">${i+1}</td><td style="font-weight:500">${met.label}</td><td class="r">${p!=null?_fmtInsight(p,met.key):'—'}</td><td class="r" style="font-weight:600">${_fmtInsight(c,met.key)}</td><td class="r" style="color:${mc}">${momGap!=null?(momGap>0?'+':'')+_fmtInsight(momGap,met.key):'—'}</td><td class="r" style="color:${mc};font-weight:600">${momPct!=null?(momPct>0?'+':'')+momPct.toFixed(1)+'%':'—'}</td><td class="r">${yCell}</td><td class="r" style="color:${yc}">${yoyGapCell}</td><td class="r" style="color:${yc};font-weight:600">${yoyPctCell}</td></tr>`;
   }).join('');
-  function buildCards(cid,concId,getPct){
+  function buildCards(cid,concId,getPct,getVals){
     const cont=document.getElementById(cid);if(!cont)return;let good=0,bad=0;
     cont.innerHTML=INSIGHT_METRICS.map(met=>{const pct=getPct(met.key);if(pct===null)return'';
       const badge=_insightBadge(pct,met.higherBetter,met.neutral);const isGood=met.neutral?(pct>0):(met.higherBetter?pct>0:pct<0);
       const w=met.weight||1;
       if(badge.cls==='badge-good')good+=w;else if(badge.cls==='badge-bad')bad+=w;
       const arrow=_pctArrowGood(pct,isGood);const pctColor=isGood?'#15803d':pct!==0?'#dc2626':'#94a3b8';
-      return`<div class="ins-row"><div class="ins-icon" style="background:${met.neutral?'#f1f5f9':isGood?'#f0fdf4':'#fff5f5'}">${met.icon}</div><div class="ins-label">${met.label}</div><div class="ins-mom">${arrow}<span class="ins-pct" style="color:${pctColor}">${(pct>0?'+':'')+pct.toFixed(1)}%</span><span class="ins-badge ${badge.cls}">${badge.text}</span></div></div>`;
+      const vals=getVals?getVals(met.key):null;
+      const valsHtml=vals?`<div class="ins-values">${_fmtInsight(vals.cmp,met.key)} → <b>${_fmtInsight(vals.cur,met.key)}</b></div>`:'';
+      return`<div class="ins-row"><div class="ins-icon" style="background:${met.neutral?'#f1f5f9':isGood?'#f0fdf4':'#fff5f5'}">${met.icon}</div><div class="ins-label">${met.label}${valsHtml}</div><div class="ins-mom">${arrow}<span class="ins-pct" style="color:${pctColor}">${(pct>0?'+':'')+pct.toFixed(1)}%</span><span class="ins-badge ${badge.cls}">${badge.text}</span></div></div>`;
     }).join('');
     const conc=document.getElementById(concId);if(!conc)return;
 
@@ -2214,17 +2261,31 @@ function renderInsight(){
       bullets.push({icon:'💰',text:`Biaya UJP ${ujp>0?'+':''}${ujp.toFixed(1)}% & Insentif ${ins>0?'+':''}${ins.toFixed(1)}% — ${costGood?'cost terkendali':ujp>0||ins>0?'cost meningkat':'mixed'}`,color:costGood?'#15803d':(ujp>2||ins>2)?'#dc2626':'#a16207'});
     }
 
-    // Main conclusion
+    // Main conclusion — matrix Kepadatan Armada (DP/Trip) x Cost (UJP+Insentif)
     let mainBg, mainColor, mainIcon, mainText;
-    if(good>bad){
+    const costNaik = (ujp!=null&&ins!=null) ? (ujp>0||ins>0) : null;
+    const kepadatanNaik = dpTrip!=null ? dpTrip>0 : null;
+    if(costNaik===null||kepadatanNaik===null){
+      // fallback ke tally good/bad kalau data pembanding gak lengkap
+      if(good>bad){
+        mainBg='#dcfce7'; mainColor='#15803d'; mainIcon='✅';
+        mainText='Operasional Efisien';
+      } else if(bad>good){
+        mainBg='#fee2e2'; mainColor='#dc2626'; mainIcon='⚠️';
+        mainText='Perlu Evaluasi';
+      } else {
+        mainBg='#fef9c3'; mainColor='#a16207'; mainIcon='📊';
+        mainText='Mixed — Cek Detail';
+      }
+    } else if(!costNaik){
       mainBg='#dcfce7'; mainColor='#15803d'; mainIcon='✅';
       mainText='Operasional Efisien';
-    } else if(bad>good){
+    } else if(costNaik&&kepadatanNaik){
+      mainBg='#fef9c3'; mainColor='#a16207'; mainIcon='📈';
+      mainText='Waspada — Kepadatan & Cost Naik';
+    } else {
       mainBg='#fee2e2'; mainColor='#dc2626'; mainIcon='⚠️';
       mainText='Perlu Evaluasi';
-    } else {
-      mainBg='#fef9c3'; mainColor='#a16207'; mainIcon='📊';
-      mainText='Mixed — Cek Detail';
     }
 
     conc.style.background=mainBg;
@@ -2233,8 +2294,8 @@ function renderInsight(){
       ${bullets.map(b=>`<div style="display:flex;gap:6px;align-items:flex-start;margin:3px 0;font-size:11px;color:${b.color}"><span>${b.icon}</span><span>${b.text}</span></div>`).join('')}
     `;
   }
-  buildCards('insightMoMCards','insightMoMConclusion',key=>{const c=v26[key]||0,p=vp?vp[key]||0:null;return p!=null&&p!==0?(c-p)/Math.abs(p)*100:null;});
-  buildCards('insightYoYCards','insightYoYConclusion',key=>{const c=v26[key]||0,y=v25[key]||0;return y!==0?(c-y)/Math.abs(y)*100:null;});
+  buildCards('insightMoMCards','insightMoMConclusion',key=>{const c=v26[key]||0,p=vp?vp[key]||0:null;return p!=null&&p!==0?(c-p)/Math.abs(p)*100:null;},key=>({cur:v26[key]||0,cmp:vp?vp[key]||0:0}));
+  buildCards('insightYoYCards','insightYoYConclusion',key=>{const c=v26[key]||0,y=v25[key]||0;return y!==0?(c-y)/Math.abs(y)*100:null;},key=>({cur:v26[key]||0,cmp:v25[key]||0}));
   if(typeof renderInsightProd==='function')renderInsightProd();
   if(typeof renderDemandTable==='function')renderDemandTable();
   if(typeof buildYoYCharts==='function')setTimeout(()=>buildYoYCharts(sites),100);

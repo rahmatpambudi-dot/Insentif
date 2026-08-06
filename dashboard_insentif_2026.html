@@ -2233,7 +2233,10 @@ function renderInsight(){
     const doDem=getPct('DO'), dpDem=getPct('DP');
 
     // Matrix Kepadatan Armada (DP/Trip) x Cost (UJP+Insentif) — dipakai bareng utk bullet & kesimpulan
-    const costNaik = (ujp!=null&&ins!=null) ? (ujp>0||ins>0) : null;
+    // Cost dinilai pakai weighted net score (bukan OR), krn Insentif MPP adalah metric utama yang dikontrol
+    // dashboard ini — kenaikan UJP kecil akibat volume naik ga boleh nutupin penurunan Insentif yang signifikan.
+    const costScore = (ujp!=null&&ins!=null) ? (ins*0.65 + ujp*0.35) : null;
+    const costNaik = costScore!=null ? costScore>0 : null;
     const kepadatanNaik = dpTrip!=null ? dpTrip>0 : null;
 
     // Build sub-bullets
@@ -2261,13 +2264,13 @@ function renderInsight(){
 
     // Cost context — warna ikut matrix yang sama kayak KESIMPULAN (biar konsisten, gak merah sendiri)
     if(ujp!==null&&ins!==null){
-      const costGood=ujp<0&&ins<0;
+      const costGood=!costNaik; // net weighted score turun (Insentif dibobot lebih besar drpd UJP)
       let costBulletColor;
       if(costGood) costBulletColor='#15803d';
       else if(costNaik&&kepadatanNaik) costBulletColor='#a16207'; // kuning — growth sehat, cost wajar
       else if(costNaik&&!kepadatanNaik) costBulletColor='#dc2626'; // merah — cost naik tapi kepadatan turun
       else costBulletColor='#a16207'; // mixed
-      bullets.push({icon:'💰',text:`Biaya UJP ${ujp>0?'+':''}${ujp.toFixed(1)}% & Insentif ${ins>0?'+':''}${ins.toFixed(1)}% — ${costGood?'cost terkendali':costNaik&&kepadatanNaik?'cost naik wajar (demand naik)':ujp>0||ins>0?'cost meningkat':'mixed'}`,color:costBulletColor});
+      bullets.push({icon:'💰',text:`Biaya UJP ${ujp>0?'+':''}${ujp.toFixed(1)}% & Insentif ${ins>0?'+':''}${ins.toFixed(1)}% — ${costGood?'cost terkendali':costNaik&&kepadatanNaik?'cost naik wajar (demand naik)':costNaik?'cost meningkat':'mixed'}`,color:costBulletColor});
     }
 
     // Main conclusion — matrix Kepadatan Armada (DP/Trip) x Cost (UJP+Insentif)

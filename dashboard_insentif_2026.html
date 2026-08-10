@@ -919,7 +919,7 @@ function renderKPIDist(){
     const MONTH_NUM2={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
     const yr=RANGE_FROM.slice(0,4);
     const activeMonths=months.filter(m=>{const mn=yr+'-'+(MONTH_NUM2[m]||'01');return mn<=RANGE_TO.slice(0,7)&&RANGE_FROM.slice(0,7)<=mn;});
-    const M2Kd={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+    const M2Kd={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',June:'jun',July:'jul',August:'aug',September:'sep',October:'oct',November:'nov',December:'dec'};
     let mh=0,mm=0,ml=0;
     ALL_MPP.forEach(r=>{if(!sites.includes(r.site))return;activeMonths.forEach(m=>{const mk=M2Kd[m]||m.slice(0,3).toLowerCase();const ins=r[mk]||0;if(ins<=0)return;if(ins>1500000)mh++;else if(ins>=500000)mm++;else ml++;});});
     d={...aggDaily(sites,RANGE_FROM,RANGE_TO,DAILY),mh,mm,ml};
@@ -1027,7 +1027,7 @@ function renderStatBadges(){
   const months=getMonths();
   const sites=getSites();
   const M2K={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
-    June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+    June:'jun',July:'jul',August:'aug',September:'sep',October:'oct',November:'nov',December:'dec'};
   // kumpulkan semua nilai insentif driver sesuai filter aktif
   let statActiveMonths=months;
   if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
@@ -1073,7 +1073,7 @@ function renderDistTable(){
     October:'Oktober',November:'November',December:'Desember'};
   // Month key mapping (full name → short key in ALL_MPP)
   const M2K={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
-    June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+    June:'jun',July:'jul',August:'aug',September:'sep',October:'oct',November:'nov',December:'dec'};
 
   // Build per-driver per-month rows from ALL_MPP
   // If range mode, only show months that overlap with RANGE_FROM–RANGE_TO
@@ -1202,7 +1202,7 @@ function buildCharts(){
   // Distribusi cat stacked — selalu Jan-Jun, data per bulan ikut filter aktif
   const catMonths=MONTHS;
   const catLabels=catMonths.map(m=>MLBL[MONTHS.indexOf(m)]);
-  const M2K_c={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+  const M2K_c={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',June:'jun',July:'jul',August:'aug',September:'sep',October:'oct',November:'nov',December:'dec'};
   let catHighD,catMidD,catLowD;
   if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
     // Range mode: hitung mh/mm/ml dari ALL_MPP per bulan (full bulan, approximasi)
@@ -1229,7 +1229,7 @@ function buildCharts(){
 
   // Dist histogram — rebuild rows dari ALL_MPP dengan struktur baru
   const M2K_h={January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
-    June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+    June:'jun',July:'jul',August:'aug',September:'sep',October:'oct',November:'nov',December:'dec'};
   let histActiveMonths=months;
   if(VIEW==='range'&&RANGE_FROM&&RANGE_TO){
     const MONTH_NUM3={January:'01',February:'02',March:'03',April:'04',May:'05',June:'06',July:'07',August:'08',September:'09',October:'10',November:'11',December:'12'};
@@ -2486,7 +2486,7 @@ function renderMPPJalur() {
 
   const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const M2K = {January:'jan',February:'feb',March:'mar',April:'apr',May:'may',
-    June:'jun',July:'jul',August:'agu',September:'sep',October:'okt',November:'nov',December:'des'};
+    June:'jun',July:'jul',August:'aug',September:'sep',October:'oct',November:'nov',December:'dec'};
   const MLBL = {January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',
     June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
   const METRIC_LABEL = {ins:'Insentif',ujp:'UJP',trips:'Trip','do_':'DO',dp:'DP'};

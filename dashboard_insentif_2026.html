@@ -658,7 +658,7 @@ const INSIGHT_DATA={"January":{"cur26":{"DO":90166.0,"DP":54347.0,"Trip":6756,"U
 const NK=['JBBK','CKP','SDA'];
 const HK=['Hub Bogor','Hub Tangerang','Hub Utara','Hub Bandung','Hub Yogya','Hub Semarang','Hub Lampung','Hub Palembang','Hub Kediri'];
 const AK=[...NK,...HK];
-const MONTHS=["January","February","March","April","May","June","July","August","September"];
+let MONTHS=["January","February","March","April","May","June","July","August","September"];
 let _insightMonth='May';
 const PERIOD_CONFIG={partial_months:["September"],cutoff:{"September":13}};
 const INSIGHT_METRICS=[
@@ -730,8 +730,42 @@ function setInsightDayAll(cb){
   renderInsight();
 }
 
-const MLBL=['Jan','Feb','Mar','Apr','May','Jun','Jul','Agu'];
+let MLBL=['Jan','Feb','Mar','Apr','May','Jun','Jul','Agu'];
 const MNAME={January:'Januari',February:'Februari',March:'Maret',April:'April',May:'Mei',June:'Juni',July:'Juli',August:'Agustus',September:'September',October:'Oktober',November:'November',December:'Desember'};
+const MLBL_ENG={January:'Jan',February:'Feb',March:'Mar',April:'Apr',May:'Mei',June:'Jun',July:'Jul',August:'Agu',September:'Sep',October:'Okt',November:'Nov',December:'Des'};
+const MONTH_ORDER=["January","February","March","April","May","June","July","August","September","October","November","December"];
+// Auto-detect which months actually have data in DAILY, and (re)build the month dropdown + MONTHS/MLBL arrays accordingly.
+// This removes the need to manually add a new <option> + MONTHS entry every time a new month's data lands.
+function _autoDetectMonths(){
+  const monthNums=new Set();
+  for(const site in DAILY){
+    for(const dt in DAILY[site]){
+      const mn=parseInt(dt.slice(5,7),10); // 1-12
+      if(mn>=1&&mn<=12) monthNums.add(mn);
+    }
+  }
+  const detected=MONTH_ORDER.filter((_,idx)=>monthNums.has(idx+1));
+  if(detected.length===0) return; // safety: keep hardcoded fallback if DAILY is empty/unavailable
+  MONTHS.length=0; detected.forEach(m=>MONTHS.push(m));
+  MLBL.length=0; detected.forEach(m=>MLBL.push(MLBL_ENG[m]));
+  const latest=detected[detected.length-1];
+  const sel=document.getElementById('monthSel');
+  if(sel){
+    let opts='<option value="all">Semua Bulan</option>';
+    detected.forEach(m=>{
+      const label=MNAME[m]+(m===latest?' *':'');
+      opts+=`<option value="${m}">${label}</option>`;
+    });
+    opts+='<option disabled>──────────</option>'+
+      '<option value="Q1">Q1 (Jan\u2013Mar)</option>'+
+      '<option value="Q2">Q2 (Apr\u2013Jun)</option>'+
+      '<option value="Q3">Q3 (Jul\u2013Sep)</option>'+
+      '<option value="Q4">Q4 (Okt\u2013Des)</option>'+
+      '<option value="S1">Semester 1</option>'+
+      '<option value="S2">Semester 2</option>';
+    sel.innerHTML=opts;
+  }
+}
 const SD={'JBBK':'Jababeka','CKP':'Cikupa','SDA':'Sidoarjo','Hub Bogor':'Hub Bogor','Hub Tangerang':'Hub Tangerang','Hub Utara':'Hub Utara','Hub Bandung':'Hub Bandung','Hub Yogya':'Hub Yogya','Hub Semarang':'Hub Semarang','Hub Lampung':'Hub Lampung','Hub Palembang':'Hub Palembang','Hub Kediri':'Hub Kediri'};
 const SC={'JBBK':'#1e6fb5','CKP':'#2889d8','SDA':'#5aaff0','Hub Bogor':'#22c55e','Hub Tangerang':'#16a34a','Hub Utara':'#0891b2','Hub Bandung':'#0d9488','Hub Yogya':'#7c3aed','Hub Semarang':'#db2777','Hub Lampung':'#ea580c','Hub Palembang':'#9333ea','Hub Kediri':'#9f1239'};
 const PG_TITLES={'overview':'Overview','produktivitas':'Produktivitas','area':'Per Area','topmpp':'Top MPP','distribusi':'Distribusi MPP','insight':'Insight'};
@@ -2462,6 +2496,7 @@ function renderJalurTable(){
 Chart.register(ChartDataLabels);
 
 // Init: ensure FM starts with all months
+_autoDetectMonths();
 document.getElementById('monthSel').value='all';
 document.getElementById('monthSel').value='all';
 _setRangeMax();

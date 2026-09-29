@@ -222,6 +222,39 @@ def parse_tat_string(v):
         return val
     except: return None
 
+def to_rp(v):
+    """
+    Parser nilai Rupiah (UJP) yang tahan variasi format sel Google Sheets:
+      '205957' | '205,957' | '205.957' | 'Rp205.957' | 'Rp 205.957,00' | '(5.000)'
+    Titik/koma hanya dianggap pemisah ribuan kalau polanya 3-digit (xxx.xxx.xxx).
+    Return 0.0 kalau kosong / tidak bisa di-parse.
+    """
+    if v is None: return 0.0
+    if isinstance(v, (int, float)): return float(v)
+    s = str(v).strip()
+    if s in ('', 'None', '-', '#N/A', 'N/A', '#REF!', '#VALUE!', '#DIV/0!'): return 0.0
+    s = re.sub(r'(?i)idr|rp\.?', '', s).replace(' ', '').replace('\u00a0', '')
+    neg = s.startswith('(') and s.endswith(')')
+    s = s.strip('()')
+    if ',' in s and '.' in s:
+        if s.rfind(',') > s.rfind('.'):
+            s = s.replace('.', '').replace(',', '.')   # 1.234.567,89 (format ID)
+        else:
+            s = s.replace(',', '')                     # 1,234,567.89 (format US)
+    elif '.' in s:
+        if re.fullmatch(r'-?\d{1,3}(\.\d{3})+', s):
+            s = s.replace('.', '')                     # 205.957 → 205957
+    elif ',' in s:
+        if re.fullmatch(r'-?\d{1,3}(,\d{3})+', s):
+            s = s.replace(',', '')                     # 205,957 → 205957
+        else:
+            s = s.replace(',', '.')                    # 12,5 → 12.5
+    try:
+        val = float(s)
+    except:
+        return 0.0
+    return -val if neg else val
+
 def empty_month():
     return {'trips':0,'do_':0,'dp':0,'ujp':0,'ins':0,'cbm':0,
             'mpp_low':0,'mpp_mid':0,'mpp_high':0}
@@ -268,6 +301,27 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
     cbm_col_name = headers[ci['cbm']] if ci['cbm'] >= 0 else 'NOT FOUND'
     print(f'  [COL] {site} — TAT: "{tat_col_name}" | DP_Insentif: "{dp_ins_col_name}" | CBM: "{cbm_col_name}"')
 
+    # Log kolom UJP — exact match 'UJP', ambil yang pertama; warning kalau duplikat / tidak ada
+    ujp_all_idx = [i for i, h in enumerate(headers) if str(h).strip() == 'UJP']
+    ujp_like    = [f'{i}:"{h}"' for i, h in enumerate(headers) if 'ujp' in str(h).strip().lower()]
+    tag = '2025' if is_2025 else '2026'
+    if ci['ujp'] < 0:
+        print(f'  [WARN][UJP] {site} {tag} — kolom "UJP" TIDAK DITEMUKAN → UJP = 0. Header mirip: {ujp_like}')
+    else:
+        samples = []
+        for r in all_rows[1:]:
+            rv = r[ci['ujp']] if ci['ujp'] < len(r) else ''
+            if str(rv).strip():
+                samples.append(f'{rv!r}→{to_rp(rv):,.0f}')
+            if len(samples) >= 3: break
+        print(f'  [COL][UJP] {site} {tag} — idx={ci["ujp"]} | sample: {samples}')
+        if len(ujp_all_idx) > 1:
+            print(f'  [WARN][UJP] {site} {tag} — header "UJP" DUPLIKAT di idx {ujp_all_idx}, dipakai idx {ci["ujp"]}')
+
+    ujp_fail        = 0                 # sel UJP terisi tapi gagal di-parse
+    ujp_fail_sample = []
+    unknown_month   = defaultdict(int)  # nilai Month Rev yang tidak dikenali
+
     monthly     = defaultdict(empty_month)
     monthly_c   = defaultdict(empty_month)  # LC type C only (NDC) / semua (HUB)
     daily       = defaultdict(empty_month)  # {YYYY-MM-DD: {...}} — khusus 2026, untuk date-range filter
@@ -289,6 +343,11 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
         def g(c): return row[c] if 0 <= c < len(row) else ''
 
         m = normalize_month(g(ci['month']))
+        if m not in MONTH_ORDER:
+            raw_m = str(g(ci['month'])).strip()
+            if raw_m:
+                unknown_month[raw_m] += 1
+            continue
         if m not in months: continue
 
         drv        = str(g(ci['driver'])).strip()
@@ -326,10 +385,16 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                         row_date_iso = d.isoformat()
                 except: pass
 
+        ujp_raw = g(ci['ujp'])
+        ujp_v   = to_rp(ujp_raw)
+        if ujp_v == 0 and str(ujp_raw).strip() not in ('', '0', '-', 'None'):
+            ujp_fail += 1
+            if len(ujp_fail_sample) < 3: ujp_fail_sample.append(repr(ujp_raw))
+
         monthly[m]['trips'] += 1
         monthly[m]['do_']   += to_num(g(ci['do']))
         monthly[m]['dp']    += to_num(g(ci['dp']))
-        monthly[m]['ujp']   += to_num(g(ci['ujp']))
+        monthly[m]['ujp']   += ujp_v
         monthly[m]['ins']   += to_num(g(ci['ins']))
         monthly[m]['cbm']   += to_num(g(ci['cbm']))
 
@@ -337,7 +402,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
             daily[row_date_iso]['trips'] += 1
             daily[row_date_iso]['do_']   += to_num(g(ci['do']))
             daily[row_date_iso]['dp']    += to_num(g(ci['dp']))
-            daily[row_date_iso]['ujp']   += to_num(g(ci['ujp']))
+            daily[row_date_iso]['ujp']   += ujp_v
             daily[row_date_iso]['ins']   += to_num(g(ci['ins']))
             daily[row_date_iso]['cbm']   += to_num(g(ci['cbm']))
 
@@ -346,7 +411,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
             monthly_c[m]['trips'] += 1
             monthly_c[m]['do_']   += to_num(g(ci['do']))
             monthly_c[m]['dp']    += to_num(g(ci['dp']))
-            monthly_c[m]['ujp']   += to_num(g(ci['ujp']))
+            monthly_c[m]['ujp']   += ujp_v
             monthly_c[m]['ins']   += to_num(g(ci['ins']))
             monthly_c[m]['cbm']   += to_num(g(ci['cbm']))
 
@@ -356,7 +421,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                 area_data[area][m]['trips'] += 1
                 area_data[area][m]['do_']   += to_num(g(ci['do']))
                 area_data[area][m]['dp']    += to_num(g(ci['dp']))
-                area_data[area][m]['ujp']   += to_num(g(ci['ujp']))
+                area_data[area][m]['ujp']   += ujp_v
                 area_data[area][m]['ins']   += to_num(g(ci['ins']))
                 area_data[area][m]['cbm']   += to_num(g(ci['cbm']))
 
@@ -367,7 +432,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                     period_partial[m]['trips'] += 1
                     period_partial[m]['do_']   += to_num(g(ci['do']))
                     period_partial[m]['dp']    += to_num(g(ci['dp']))
-                    period_partial[m]['ujp']   += to_num(g(ci['ujp']))
+                    period_partial[m]['ujp']   += ujp_v
                     period_partial[m]['ins']   += to_num(g(ci['ins']))
                     period_partial[m]['cbm']   += to_num(g(ci['cbm']))
             MONTH_ORDER_LOCAL = MONTH_ORDER[:]
@@ -379,7 +444,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                         mom_period_partial[m]['trips'] += 1
                         mom_period_partial[m]['do_']   += to_num(g(ci['do']))
                         mom_period_partial[m]['dp']    += to_num(g(ci['dp']))
-                        mom_period_partial[m]['ujp']   += to_num(g(ci['ujp']))
+                        mom_period_partial[m]['ujp']   += ujp_v
                         mom_period_partial[m]['ins']   += to_num(g(ci['ins']))
                         mom_period_partial[m]['cbm']   += to_num(g(ci['cbm']))
 
@@ -389,7 +454,7 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
                 yoy_partial[m]['trips'] += 1
                 yoy_partial[m]['do_']   += to_num(g(ci['do']))
                 yoy_partial[m]['dp']    += to_num(g(ci['dp']))
-                yoy_partial[m]['ujp']   += to_num(g(ci['ujp']))
+                yoy_partial[m]['ujp']   += ujp_v
                 yoy_partial[m]['ins']   += to_num(g(ci['ins']))
                 yoy_partial[m]['cbm']   += to_num(g(ci['cbm']))
 
@@ -423,6 +488,15 @@ def extract_sheet(ws, site, months, sm, mpp_raw, partial_months=None, is_2025=Fa
             # DP_Insentif: akumulasi per driver per bulan (2026 only)
             if not is_2025 and dp_ins_val > 0:
                 dp_ins_data[nik][m] += dp_ins_val
+
+    if ujp_fail:
+        print(f'  [WARN][UJP] {site} {tag} — {ujp_fail} sel UJP gagal di-parse (dihitung 0). Contoh: {ujp_fail_sample}')
+    if unknown_month:
+        top = sorted(unknown_month.items(), key=lambda x: -x[1])[:5]
+        print(f'  [WARN][MONTH] {site} {tag} — {sum(unknown_month.values())} baris Month Rev tidak dikenali (di-skip): {top}')
+    ujp_sum = {m[:3]: f"{v['ujp']/1e6:,.1f}jt ({v['ujp']/(v['trips'] or 1):,.0f}/trip)"
+               for m, v in sorted(monthly.items(), key=lambda x: MONTH_ORDER.index(x[0]))}
+    print(f'  [UJP] {site} {tag} — {ujp_sum}')
 
     sm[site] = {m: dict(v) for m, v in monthly.items()}
     sm[site]['_lc_c'] = {m: dict(v) for m, v in monthly_c.items()}
@@ -592,6 +666,86 @@ def build_insight_data(sm26, sm25, sites_ndc, months, partial_months):
     return insight
 
 
+# ── Guard 2025 ───────────────────────────────────────────────────────────────
+
+UJP_TRIP_MIN, UJP_TRIP_MAX = 20_000, 1_000_000   # rentang wajar UJP/trip (Rp)
+GUARD_TOL_UJP_TRIP = 0.50                        # toleransi perubahan UJP/trip
+GUARD_TOL_TRIPS    = 0.20                        # toleransi perubahan jumlah trip
+
+def read_const(html, name):
+    key = f'const {name}='
+    i = html.find(key)
+    if i < 0: return None
+    try:
+        return json.JSONDecoder().raw_decode(html[i + len(key):])[0]
+    except Exception as e:
+        print(f'  [guard] gagal baca {name} dari HTML: {e}')
+        return None
+
+def guard_2025(sm25):
+    """
+    Data 2025 = tahun tutup, seharusnya stabil. Bandingkan hasil ekstraksi baru
+    dengan SITE_MONTHLY_2025 / DAILY_2025 yang ada di HTML sekarang.
+      - Bulan hilang                         → pakai data lama
+      - UJP/trip baru di luar rentang wajar  → pakai data lama (kalau data lama wajar)
+      - Trip berubah > 20% / UJP/trip > 50%  → pakai data lama
+    Kalau data lama sendiri tidak wajar, data baru yang dipakai.
+    Bypass: set env ACCEPT_2025_CHANGES=1 (untuk koreksi sheet 2025 yang memang disengaja).
+    """
+    if os.environ.get('ACCEPT_2025_CHANGES') == '1':
+        print('\n🛡️  Guard 2025: BYPASS (ACCEPT_2025_CHANGES=1)')
+        return
+    try:
+        with open(HTML_PATH, 'r', encoding='utf-8') as f:
+            html = f.read()
+    except Exception as e:
+        print(f'\n🛡️  Guard 2025: skip — HTML tidak terbaca ({e})')
+        return
+    old_sm = read_const(html, 'SITE_MONTHLY_2025') or {}
+    old_dl = read_const(html, 'DAILY_2025') or {}
+
+    def ok(d):
+        t = d.get('trips', 0)
+        return t > 0 and UJP_TRIP_MIN <= d.get('ujp', 0) / t <= UJP_TRIP_MAX
+
+    print('\n🛡️  Guard 2025:')
+    n_restore = 0
+    for site, old_site in old_sm.items():
+        new_site = sm25.setdefault(site, {})
+        for m in MONTHS_2025:
+            old = old_site.get(m)
+            if not isinstance(old, dict) or not old.get('trips'): continue
+            new = new_site.get(m)
+            reason = None
+            if not new or not new.get('trips'):
+                reason = 'bulan hilang'
+            elif not ok(new) and ok(old):
+                reason = f"UJP/trip tidak wajar ({new['ujp']/new['trips']:,.0f})"
+            elif ok(new) and ok(old):
+                ut_o = old['ujp'] / old['trips']; ut_n = new['ujp'] / new['trips']
+                if abs(ut_n / ut_o - 1) > GUARD_TOL_UJP_TRIP:
+                    reason = f'UJP/trip {ut_o:,.0f} → {ut_n:,.0f}'
+                elif abs(new['trips'] / old['trips'] - 1) > GUARD_TOL_TRIPS:
+                    reason = f"trip {old['trips']} → {new['trips']}"
+            if not reason: continue
+
+            restored = dict(old)
+            if new and 'yoy_period' in new:
+                restored['yoy_period'] = new['yoy_period']
+            new_site[m] = restored
+            if isinstance(old_site.get('_lc_c', {}).get(m), dict):
+                new_site.setdefault('_lc_c', {})[m] = dict(old_site['_lc_c'][m])
+            mm = f'2025-{MONTH_ORDER.index(m)+1:02d}'
+            dl = new_site.setdefault('_daily', {})
+            for d in [d for d in dl if d.startswith(mm)]: del dl[d]
+            for d, v in old_dl.get(site, {}).items():
+                if d.startswith(mm): dl[d] = dict(v)
+            n_restore += 1
+            print(f'  [WARN][GUARD] {site} {m} 2025 — {reason} → pakai data lama '
+                  f"(UJP {old['ujp']/1e6:,.1f}jt, {old['trips']} trip). Cek sheet 2025!")
+    print(f'  {"✅ semua bulan 2025 konsisten" if not n_restore else f"⚠️  {n_restore} site-bulan di-restore dari data lama"}')
+
+
 # ── HTML Update ──────────────────────────────────────────────────────────────
 
 def replace_section(html, const_name, new_js, next_const):
@@ -712,6 +866,8 @@ def main():
             if i < len(SITES_26)-1: time.sleep(10)
         except gspread.exceptions.WorksheetNotFound:
             print(f'  [MISS] {site} (tab: {tab_name})')
+
+    guard_2025(sm25)
 
     compute_mpp_categories(sm26, mpp_raw)
     all_mpp, top20 = build_mpp_tables(mpp_raw, months)
